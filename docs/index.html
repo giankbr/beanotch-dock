@@ -524,13 +524,15 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
 .desktop .win .body b { display: block; height: 10px; border-radius: 5px; background: var(--surface-2); }
 .desktop .w1 { left: 7%; top: 9%; width: 48%; height: 58%; }
 .desktop .w2 { right: 6%; top: 18%; width: 34%; height: 44%; }
-.desktop .dockimg { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 76%; max-width: none; }
+.desktop .dock { position: absolute; left: 12%; right: 12%; bottom: 0; }
+.desktop .dock img { width: 100%; }
 .feature-shot { background: var(--inner); border-radius: 16px; margin: 8px 8px 0; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; aspect-ratio: 16 / 6.5;
   background: linear-gradient(160deg, #7aa7e6, #a98be0); }
 :root[data-theme="dark"] .feature-shot { background: linear-gradient(160deg, #24427c, #4a2f7c); }
 .feature-shot img { width: 96%; }
 .menu-shot { border-radius: 18px; overflow: hidden; border: 1px solid var(--border); }
-@media (max-width: 560px) { .desktop { aspect-ratio: 4 / 3; } .desktop .w2 { display: none; } .desktop .w1 { width: 80%; } .desktop .dockimg { width: 120%; } }
+.menu-shot img { width: 100%; }
+@media (max-width: 560px) { .desktop { aspect-ratio: 4 / 3; } .desktop .w2 { display: none; } .desktop .w1 { width: 80%; } .desktop .dock { left: -10%; right: -10%; } }
 </style>
 </head>
 <body>
@@ -571,7 +573,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
     <div class="desktop">
       <div class="win w1"><div class="tb">File Explorer<span><i>—</i><i>▢</i><i>✕</i></span></div><div class="body"><b style="width:60%"></b><b style="width:85%"></b><b style="width:72%"></b><b style="width:40%"></b><b style="width:78%"></b></div></div>
       <div class="win w2"><div class="tb">Notepad<span><i>—</i><i>▢</i><i>✕</i></span></div><div class="body"><b style="width:90%"></b><b style="width:70%"></b><b style="width:82%"></b></div></div>
-      <img class="dockimg only-light" src="assets/dock-magnified-light.png" alt="Beanotch Dock along the bottom of a Windows desktop, one icon magnified under the pointer"><img class="dockimg only-dark" src="assets/dock-magnified-dark.png" alt="">
+      <div class="dock"><img class="only-light" src="assets/dock-magnified-light.png" alt="Beanotch Dock along the bottom of a Windows desktop, one icon magnified under the pointer"><img class="only-dark" src="assets/dock-magnified-dark.png" alt=""></div>
     </div>
   </div></div>
   <div style="position:relative;max-width:1200px;margin:0 auto"><div class="hero-glow"></div></div>
