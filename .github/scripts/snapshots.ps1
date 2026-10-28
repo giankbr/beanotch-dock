@@ -1,5 +1,5 @@
-# Photographs the dock on the build machine for the website: a full-HD desktop with no icons on it and a File
-# Explorer window open (so the dock shows an open app), once in Windows' light look and once in its dark one.
+# Photographs the dock on the build machine for the website: a full-HD desktop with nothing on it but the dock,
+# once in Windows' light look and once in its dark one.
 param([string]$Out, [string]$Exe)
 
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
@@ -62,13 +62,6 @@ foreach ($look in "light", "dark") {
   # The wallpaper itself, which the website sets the dock on: free of the runner's dialogs and its "Test Mode" mark.
   $paper = if ($look -eq "dark") { "C:\Windows\Web\Wallpaper\Windows\img19.jpg" } else { "C:\Windows\Web\Wallpaper\Windows\img0.jpg" }
   if (Test-Path $paper) { Copy-Item $paper (Join-Path $dir "wall.jpg") }
-  # A real window open, placed like someone's at work (so the dock shows an open app).
-  Start-Process explorer.exe $env:USERPROFILE
-  Start-Sleep -Seconds 4
-  $explorer = [Desk]::FindWindow("CabinetWClass", $null)
-  if ($explorer -ne [IntPtr]::Zero) { [Desk]::ShowWindow($explorer, 9) | Out-Null; [Desk]::MoveWindow($explorer, 380, 130, 1160, 660, $true) | Out-Null }
-  Start-Sleep -Seconds 2
-
   $env:BEANOTCH_DOCK_SNAPSHOT = $dir
   $app = Start-Process $Exe -PassThru
   # The dock writes a marker as it reaches each state it wants photographed, and waits for the shot.
@@ -79,7 +72,5 @@ foreach ($look in "light", "dark") {
   }
   if (-not $app.WaitForExit(60000)) { Stop-Process $app -Force; "timed out" | Out-File (Join-Path $dir "timeout.txt") }
   "exit code: $($app.ExitCode)" | Out-File (Join-Path $dir "exit.txt")
-  if ($explorer -ne [IntPtr]::Zero) { [Desk]::ShowWindow($explorer, 0) | Out-Null }
-  Get-Process explorer -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle } | ForEach-Object { $_.CloseMainWindow() | Out-Null }
 }
 Get-ChildItem -Recurse $Out | Format-Table FullName, Length
