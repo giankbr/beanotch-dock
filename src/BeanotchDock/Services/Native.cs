@@ -165,6 +165,23 @@ static partial class Native
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool CloseHandle(nint handle);
 
+    [LibraryImport("kernel32.dll")]
+    private static partial int GetApplicationUserModelId(nint process, ref uint length, [Out] char[] id);
+
+    // A packaged (Store) process's AppUserModelID; null for ordinary programs.
+    internal static string? ProcessAumid(uint pid)
+    {
+        var process = OpenProcess(0x1000, false, pid);
+        if (process == 0) return null;
+        try
+        {
+            var buffer = new char[130];
+            var length = (uint)buffer.Length;
+            return GetApplicationUserModelId(process, ref length, buffer) == 0 ? new string(buffer, 0, (int)Math.Max(0, length - 1)) : null;
+        }
+        finally { CloseHandle(process); }
+    }
+
     // The program a process runs, readable even for elevated ones (PROCESS_QUERY_LIMITED_INFORMATION).
     internal static string? ProcessPath(uint id)
     {

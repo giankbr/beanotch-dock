@@ -12,7 +12,7 @@ public sealed record TaskWindow(nint Handle, string Key, string AppName, string?
 // has no owner or asks for a taskbar button (WS_EX_APPWINDOW).
 public sealed class Tasks(nint self)
 {
-    private readonly Dictionary<uint, (string? Path, string Name)> processes = [];
+    private readonly Dictionary<uint, (string? Path, string Name, string? Aumid)> processes = [];
     public List<TaskWindow> Windows()
     {
         var found = new List<TaskWindow>();
@@ -47,9 +47,11 @@ public sealed class Tasks(nint self)
         if (!processes.TryGetValue(pid, out var process))
         {
             var path = Native.ProcessPath(pid);
-            processes[pid] = process = (path, path is null ? "" : AppName(path));
+            processes[pid] = process = (path, path is null ? "" : AppName(path), Native.ProcessAumid(pid));
         }
-        var aumid = Properties.WindowAumid(hwnd);
+        // The window's own ID first (it can split a browser's web apps from the browser), then its process's, which
+        // Store apps have even when their windows don't say.
+        var aumid = Properties.WindowAumid(hwnd) ?? process.Aumid;
         // A Store app's window belongs to ApplicationFrameHost; its own ID, set on the frame, says which app it is.
         if (aumid is null && process.Path is { } p && p.EndsWith("ApplicationFrameHost.exe", StringComparison.OrdinalIgnoreCase)) return null;
         var key = Shell.Key(aumid, process.Path);
