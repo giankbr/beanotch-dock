@@ -11,26 +11,62 @@ public sealed class Pin
     public string? Aumid { get; set; }
 }
 
-public enum DockSize { Small, Medium, Large }
+public enum DockEdge { Bottom, Left, Right }
+public enum DockTheme { Auto, Light, Dark }
+public enum DockIndicator { Dot, Line, None }
 
-// Saved as JSON in %LOCALAPPDATA%\BeanotchDock\settings.json.
+// Saved as JSON in %LOCALAPPDATA%\BeanotchDock\settings.json. Every field has a sensible default, so a file from an
+// older version (or none) still loads.
 public sealed class DockSettings
 {
     public List<Pin> Pins { get; set; } = [];
     public bool Imported { get; set; }
-    public DockSize Size { get; set; } = DockSize.Medium;
+
+    // Appearance
+    public double IconSize { get; set; } = 52;
     public bool Magnify { get; set; } = true;
+    public double Magnification { get; set; } = 1.7;
+    public DockEdge Edge { get; set; } = DockEdge.Bottom;
+    public DockTheme Theme { get; set; } = DockTheme.Auto;
+    public double Opacity { get; set; } = 0.65;
+    public double Roundness { get; set; } = 20;
+    public double Spacing { get; set; } = 0.1;
+    public double Margin { get; set; } = 8;
+    public bool Labels { get; set; } = true;
+    public DockIndicator Indicator { get; set; } = DockIndicator.Dot;
+
+    // Behaviour
     public bool AutoHide { get; set; }
+    // Seconds the dock waits, once the pointer leaves, before tucking itself away.
+    public double HideDelay { get; set; } = 0.6;
+    public bool Bounce { get; set; } = true;
+    // Apps that are open but not kept in the dock still show, after the kept ones.
+    public bool ShowRunning { get; set; } = true;
+    // Windows' habit: clicking the app in front minimizes it. Off, as on the Mac: it stays.
+    public bool ClickMinimizes { get; set; }
+
+    // Items
+    public bool Downloads { get; set; } = true;
+    public bool Trash { get; set; } = true;
+    public bool Separator { get; set; } = true;
+
     // Windows' own taskbar slides away while the dock runs, and comes back when it quits.
     public bool HideTaskbar { get; set; } = true;
     // Whether the taskbar was already set to hide itself before the dock changed it, so quitting leaves it as found.
     public bool? TaskbarWasAutoHide { get; set; }
-    public bool Downloads { get; set; } = true;
+
+    // Back to how a fresh install looks, keeping the pins and what the taskbar was.
+    public void Reset()
+    {
+        var d = new DockSettings();
+        (IconSize, Magnify, Magnification, Edge, Theme, Opacity, Roundness, Spacing, Margin, Labels, Indicator) =
+            (d.IconSize, d.Magnify, d.Magnification, d.Edge, d.Theme, d.Opacity, d.Roundness, d.Spacing, d.Margin, d.Labels, d.Indicator);
+        (AutoHide, HideDelay, Bounce, ShowRunning, ClickMinimizes, Downloads, Trash, Separator) =
+            (d.AutoHide, d.HideDelay, d.Bounce, d.ShowRunning, d.ClickMinimizes, d.Downloads, d.Trash, d.Separator);
+    }
 
     public static string Folder => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BeanotchDock");
     private static string FilePath => System.IO.Path.Combine(Folder, "settings.json");
-
-    public double IconSize => Size switch { DockSize.Small => 40, DockSize.Large => 64, _ => 52 };
 
     public static DockSettings Load()
     {

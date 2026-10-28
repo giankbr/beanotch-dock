@@ -15,7 +15,7 @@ using Windows.UI.ViewManagement;
 
 namespace BeanotchDock;
 
-// The dock's window: a borderless, always-on-top strip along the bottom of the main screen, see-through except for what
+// The dock's window: a borderless, always-on-top strip along an edge of the main screen, see-through except for what
 // the dock draws, and clipped to it so clicks elsewhere reach the windows behind. It keeps the item list in step with
 // the pins and the running apps, draws frames while anything moves, and hands clicks, drops and menus to the shell.
 public sealed partial class DockWindow : Window
@@ -48,7 +48,7 @@ public sealed partial class DockWindow : Window
         root.Children.Add(view.View);
         root.PointerMoved += (_, e) => Point(e);
         root.PointerEntered += (_, e) => Point(e);
-        root.PointerExited += (_, _) => { view.PointerX = null; pointerAway = DateTimeOffset.Now; Animate(); };
+        root.PointerExited += (_, _) => { view.Pointer = null; pointerAway = DateTimeOffset.Now; Animate(); };
         root.PointerReleased += OnClick;
         root.RightTapped += OnRightTapped;
         root.AllowDrop = true;
@@ -69,8 +69,7 @@ public sealed partial class DockWindow : Window
         AppWindow.Title = "Beanotch Dock";
         AppWindow.Closing += (_, _) => Quit();
 
-        view.Restyle(SystemDark());
-        new UISettings().ColorValuesChanged += (_, _) => ui.TryEnqueue(() => view.Restyle(SystemDark()));
+        new UISettings().ColorValuesChanged += (_, _) => ui.TryEnqueue(() => view.Restyle(Dark));
         Apply();
 
         if (!settings.Imported) ImportTaskbarPins();
@@ -95,24 +94,45 @@ public sealed partial class DockWindow : Window
 
     private static bool SystemDark() => new UISettings().GetColorValue(UIColorType.Background).R < 128;
 
-    // Size and place the strip: the full width of the main screen, tall enough for magnified icons and labels.
-    private void Apply()
+    private bool Dark => settings.Theme switch { DockTheme.Light => false, DockTheme.Dark => true, _ => SystemDark() };
+
+    // The settings applied, and the strip sized and placed along its edge of the main screen: as long as the screen,
+    // and deep enough for magnified icons and labels.
+    public void Apply()
     {
-        view.IconSize = settings.IconSize;
-        view.Magnification = settings.Magnify ? 1.7 : 1;
-        var display = DisplayArea.Primary;
-        screen = display.OuterBounds;
+        view.IconSize = Math.Clamp(settings.IconSize, 24, 128);
+        view.Magnification = settings.Magnify ? Math.Clamp(settings.Magnification, 1, 3) : 1;
+        view.Edge = settings.Edge;
+        view.Opacity = settings.Opacity;
+        view.Radius = settings.Roundness;
+        view.Spacing = settings.Spacing;
+        view.Margin = settings.Margin;
+        view.Labels = settings.Labels;
+        view.Indicator = settings.Indicator;
+        view.Bounce = settings.Bounce;
+        view.Restyle(Dark);
+        screen = DisplayArea.Primary.OuterBounds;
         scale = Native.GetDpiForWindow(hwnd) / 96.0;
-        var h = (int)Math.Ceiling(view.Height * scale);
-        AppWindow.MoveAndResize(new RectInt32(screen.X, screen.Y + screen.Height - h, screen.Width, h));
-        view.Resize(screen.Width / scale, h / scale);
+        var depth = (int)Math.Ceiling(view.Thickness * scale);
+        var rect = settings.Edge switch
+        {
+            DockEdge.Left => new RectInt32(screen.X, screen.Y, depth, screen.Height),
+            DockEdge.Right => new RectInt32(screen.X + screen.Width - depth, screen.Y, depth, screen.Height),
+            _ => new RectInt32(screen.X, screen.Y + screen.Height - depth, screen.Width, depth),
+        };
+        AppWindow.MoveAndResize(rect);
+        view.Resize(rect.Width / scale, rect.Height / scale);
         lastShape = "";
+        Refresh();
         Animate();
     }
 
+    // Along the dock: across for the bottom edge, down for the sides.
+    private double Along(Point p) => settings.Edge == DockEdge.Bottom ? p.X : p.Y;
+
     private void Point(PointerRoutedEventArgs e)
     {
-        view.PointerX = e.GetCurrentPoint(root).Position.X;
+        view.Pointer = Along(e.GetCurrentPoint(root).Position);
         Animate();
     }
 
@@ -126,7 +146,7 @@ public sealed partial class DockWindow : Window
         if (Math.Abs(view.Tucked - (Hidden ? 1 : 0)) < 0.01) view.Tucked = Hidden ? 1 : 0;
         var shapes = view.Frame(now);
         Clip(shapes);
-        if (view.PointerX is null && view.Settled && (view.Tucked == 0 || view.Tucked == 1)) animating = false;
+        if (view.Pointer is null && view.Settled && (view.Tucked == 0 || view.Tucked == 1)) animating = false;
     }
 
     // Only the drawn parts take the mouse: everything else in the strip passes clicks to what's behind.
@@ -137,16 +157,23 @@ public sealed partial class DockWindow : Window
         var key = string.Join(";", px.Select(r => $"{r.X},{r.Y},{r.Width},{r.Height}"));
         if (key == lastShape) return;
         lastShape = key;
-        Native.Shape(hwnd, px, (int)Math.Round(20 * scale));
+        Native.Shape(hwnd, px, (int)Math.Round(settings.Roundness * scale));
     }
 
     // Tucked away: auto-hide on, the pointer gone for a moment, and no menu open.
-    private bool Hidden => settings.AutoHide && view.PointerX is null && DateTimeOffset.Now - pointerAway > TimeSpan.FromSeconds(0.6) && !menuOpen;
+    private bool Hidden => settings.AutoHide && view.Pointer is null && DateTimeOffset.Now - pointerAway > TimeSpan.FromSeconds(settings.HideDelay) && !menuOpen;
 
+    // With auto-hide on, the pointer pressed against the dock's edge of the screen brings it out.
     private void WatchEdge()
     {
         if (!settings.AutoHide) return;
-        if (Native.Cursor() is { } c && c.Y >= screen.Y + screen.Height - 2 && c.X >= screen.X && c.X < screen.X + screen.Width)
+        if (Native.Cursor() is { } c && c.X >= screen.X && c.X < screen.X + screen.Width && c.Y >= screen.Y && c.Y < screen.Y + screen.Height
+            && settings.Edge switch
+            {
+                DockEdge.Left => c.X <= screen.X + 1,
+                DockEdge.Right => c.X >= screen.X + screen.Width - 2,
+                _ => c.Y >= screen.Y + screen.Height - 2,
+            })
         {
             pointerAway = DateTimeOffset.Now.AddSeconds(1);
             Animate();
@@ -174,6 +201,7 @@ public sealed partial class DockWindow : Window
             var item = next.FirstOrDefault(i => i.Key == group.Key);
             if (item is null)
             {
+                if (!settings.ShowRunning) continue;
                 item = Find(group.Key);
                 item.Pin = null;
                 item.Label = group.First().AppName;
@@ -186,9 +214,9 @@ public sealed partial class DockWindow : Window
         foreach (var item in next.Where(i => !windows.Any(w => w.Key == i.Key))) item.Windows.Clear();
         foreach (var item in next) item.Active = item.Windows.Contains(foreground);
 
-        next.Add(separator);
+        if (settings.Separator && (settings.Downloads || settings.Trash)) next.Add(separator);
         if (settings.Downloads) next.Add(downloads);
-        next.Add(trash);
+        if (settings.Trash) next.Add(trash);
 
         var changed = next.Count != items.Count || next.Where((item, i) => items[i] != item).Any();
         items = next;
@@ -216,14 +244,15 @@ public sealed partial class DockWindow : Window
     {
         var point = e.GetCurrentPoint(root);
         if (point.Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonReleased) return;
-        if (view.ItemAt(point.Position.X) is not { } item) return;
+        if (view.ItemAt(Along(point.Position)) is not { } item) return;
         switch (item.Kind)
         {
             case ItemKind.Trash: Shell.OpenTrash(); break;
             case ItemKind.Downloads: Shell.OpenDownloads(); break;
             default:
                 // As on the Mac: a running app comes to the front, with its most recent window; one that isn't opens.
-                if (item.Running) Shell.Activate(item.Windows);
+                if (item.Running && item.Active && settings.ClickMinimizes) Shell.Minimize(item.Windows);
+                else if (item.Running) Shell.Activate(item.Windows);
                 else if (item.Pin is { } pin && Shell.Launch(pin)) { item.LaunchedAt = DateTimeOffset.Now; Animate(); }
                 break;
         }
@@ -239,7 +268,7 @@ public sealed partial class DockWindow : Window
 
     private void ShowMenu(Point at)
     {
-        var x = at.X;
+        var x = Along(at);
         var menu = new MenuFlyout();
         void Add(string text, Action act, bool check = false, bool isChecked = false)
         {
@@ -276,23 +305,16 @@ public sealed partial class DockWindow : Window
         {
             Add("Magnification", () => { settings.Magnify = !settings.Magnify; Save(); }, true, settings.Magnify);
             Add("Automatically hide the Dock", () => { settings.AutoHide = !settings.AutoHide; Save(); }, true, settings.AutoHide);
-            Add("Hide the Windows taskbar", () =>
+            var position = new MenuFlyoutSubItem { Text = "Position on screen" };
+            foreach (var edge in Enum.GetValues<DockEdge>())
             {
-                settings.HideTaskbar = !settings.HideTaskbar;
-                if (settings.HideTaskbar) Taskbar.Hide(settings); else Taskbar.Restore(settings);
-                Save();
-            }, true, settings.HideTaskbar);
-            Add("Show Downloads", () => { settings.Downloads = !settings.Downloads; Save(); Refresh(); }, true, settings.Downloads);
-            var size = new MenuFlyoutSubItem { Text = "Size" };
-            foreach (var s in Enum.GetValues<DockSize>())
-            {
-                var entry = new ToggleMenuFlyoutItem { Text = s.ToString(), IsChecked = settings.Size == s };
-                entry.Click += (_, _) => { settings.Size = s; Save(); };
-                size.Items.Add(entry);
+                var entry = new ToggleMenuFlyoutItem { Text = edge.ToString(), IsChecked = settings.Edge == edge };
+                entry.Click += (_, _) => { settings.Edge = edge; Save(); };
+                position.Items.Add(entry);
             }
-            menu.Items.Add(size);
-            Add("Open at sign-in", () => Startup.Set(!Startup.On), true, Startup.On);
+            menu.Items.Add(position);
             menu.Items.Add(new MenuFlyoutSeparator());
+            Add("Dock Settings…", OpenSettings);
             Add("Quit Beanotch Dock", Quit);
         }
         menuOpen = true;
@@ -304,6 +326,27 @@ public sealed partial class DockWindow : Window
     {
         settings.Save();
         Apply();
+    }
+
+    private SettingsWindow? settingsWindow;
+
+    // One settings window at a time; it changes the dock as you go.
+    public void OpenSettings()
+    {
+        if (settingsWindow is null)
+        {
+            settingsWindow = new SettingsWindow(settings, this);
+            settingsWindow.Closed += (_, _) => settingsWindow = null;
+        }
+        settingsWindow.Activate();
+    }
+
+    public void SettingsChanged() => Save();
+
+    public void TaskbarChanged()
+    {
+        if (settings.HideTaskbar) Taskbar.Hide(settings); else Taskbar.Restore(settings);
+        settings.Save();
     }
 
     private void Pin(DockItem item)
@@ -334,9 +377,9 @@ public sealed partial class DockWindow : Window
     // Files dragged over the dock: the Recycle Bin takes them away, an app opens them.
     private void OnDragOver(object sender, DragEventArgs e)
     {
-        view.PointerX = e.GetPosition(root).X;
+        view.Pointer = Along(e.GetPosition(root));
         Animate();
-        var item = view.ItemAt(view.PointerX.Value);
+        var item = view.ItemAt(view.Pointer.Value);
         if (!e.DataView.Contains(StandardDataFormats.StorageItems) || item is null || item.Kind is ItemKind.Downloads or ItemKind.Separator) return;
         e.AcceptedOperation = item.Kind == ItemKind.Trash ? DataPackageOperation.Move : DataPackageOperation.Copy;
         e.DragUIOverride.Caption = item.Kind == ItemKind.Trash ? "Move to Recycle Bin" : "Open with " + item.Label;
@@ -344,7 +387,7 @@ public sealed partial class DockWindow : Window
 
     private async void OnDrop(object sender, DragEventArgs e)
     {
-        var item = view.ItemAt(e.GetPosition(root).X);
+        var item = view.ItemAt(Along(e.GetPosition(root)));
         if (item is null || !e.DataView.Contains(StandardDataFormats.StorageItems)) return;
         var paths = (await e.DataView.GetStorageItemsAsync()).Select(f => f.Path).Where(p => p.Length > 0).ToList();
         if (item.Kind == ItemKind.Trash) Shell.Recycle(paths);

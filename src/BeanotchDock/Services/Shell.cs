@@ -40,6 +40,12 @@ static partial class Shell
         Native.SetForegroundWindow(Native.GetLastActivePopup(front) is var popup and not 0 ? popup : front);
     }
 
+    // Windows' way: the app in front goes down to the taskbar's place (here, the dock).
+    public static void Minimize(IEnumerable<nint> windows)
+    {
+        foreach (var w in windows) Native.PostMessage(w, 0x0112, 0xF020, 0); // WM_SYSCOMMAND, SC_MINIMIZE
+    }
+
     // Asks each window to close, the way its own close button would.
     public static void Close(IEnumerable<nint> windows)
     {

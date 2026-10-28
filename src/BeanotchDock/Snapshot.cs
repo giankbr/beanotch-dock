@@ -46,14 +46,23 @@ public sealed partial class DockWindow
             // The pointer over the fourth icon, as if reaching for it.
             var apps = items.Where(i => i.IsApp).ToList();
             var target = apps.Count > 3 ? apps[3] : apps.LastOrDefault();
-            view.PointerX = target is null ? view.View.ActualWidth / 2 : target.X + view.IconSize / 2;
+            view.Pointer = target is null ? view.View.ActualWidth / 2 : target.X + view.IconSize / 2;
             Animate();
             await Pose("magnified");
             await Render(dir, "dock-magnified");
-            view.PointerX = null;
+            view.Pointer = null;
             Animate();
             ShowMenu(new Point(40, view.View.ActualHeight - 30));
             await Pose("menu");
+            OpenSettings();
+            await Pose("settings");
+            settingsWindow?.Close();
+            settings.Edge = DockEdge.Left;
+            settings.Indicator = DockIndicator.Line;
+            Apply();
+            view.Pointer = items.Count > 2 ? items[2].X + view.IconSize / 2 : null;
+            Animate();
+            await Pose("left");
         }
         catch (Exception e) { App.Log(e); }
         Quit();
@@ -80,7 +89,7 @@ public sealed partial class DockWindow
             await stream.ReadAsync(bytes.AsBuffer(), (uint)stream.Size, InputStreamOptions.None);
             await File.WriteAllBytesAsync(Path.Combine(dir, $"{name}-{(dark ? "dark" : "light")}.png"), bytes);
         }
-        view.Restyle(SystemDark());
+        view.Restyle(Dark);
         Animate();
     }
 }

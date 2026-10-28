@@ -9,40 +9,51 @@ using Windows.UI;
 
 namespace BeanotchDock.Ui;
 
-// Draws the dock: a glass bar along the bottom with the icons on it, each growing as the pointer nears it (as on the
-// Mac), a dot under the ones running, a label over the one pointed at, and a bounce while an app opens. Everything is
-// placed by hand each frame; the window clips itself to what's drawn so the rest of the strip lets clicks through.
+// Draws the dock: a glass bar along an edge of the screen with the icons on it, each growing as the pointer nears it
+// (as on the Mac), a mark under the ones running, a label beside the one pointed at, and a bounce while an app opens.
+// Everything is placed by hand each frame, along the dock ("main" axis) and out from the screen's edge ("cross" axis),
+// so the same layout serves the bottom, left and right edges. The window clips itself to what's drawn so the rest of
+// the strip lets clicks through.
 public sealed class DockView
 {
     private readonly Canvas canvas = new();
     private readonly Border bar = new();
     private readonly Border label = new() { Padding = new Thickness(10, 4, 10, 5), CornerRadius = new CornerRadius(7), IsHitTestVisible = false };
     private readonly TextBlock labelText = new() { FontSize = 12.5, FontWeight = FontWeights.Medium };
-    private readonly Dictionary<DockItem, (FrameworkElement Face, Ellipse Dot)> faces = [];
+    private readonly Dictionary<DockItem, (FrameworkElement Face, Rectangle Mark)> faces = [];
     private List<DockItem> items = [];
     private double width, height;
     private bool dark = true;
 
     public FrameworkElement View => canvas;
     public double IconSize { get; set; } = 52;
-    public double Magnification { get; set; } = 1.65;
+    public double Magnification { get; set; } = 1.7;
+    public DockEdge Edge { get; set; } = DockEdge.Bottom;
+    // The bar's glass: how solid (0–1), how round, the gap between icons (a share of an icon) and from the screen's edge.
+    public double Opacity { get; set; } = 0.65;
+    public double Radius { get; set; } = 20;
+    public double Spacing { get; set; } = 0.1;
+    public double Margin { get; set; } = 8;
+    public bool Labels { get; set; } = true;
+    public DockIndicator Indicator { get; set; } = DockIndicator.Dot;
+    public bool Bounce { get; set; } = true;
     // Where the pointer is along the dock, in the window's pixels; null when it's elsewhere.
-    public double? PointerX { get; set; }
+    public double? Pointer { get; set; }
     public DockItem? Hovered { get; private set; }
-    // 0 shown, 1 tucked below the screen's edge (auto-hide).
+    // 0 shown, 1 tucked past the screen's edge (auto-hide).
     public double Tucked { get; set; }
 
+    private bool Side => Edge != DockEdge.Bottom;
     public double Pad => Math.Round(IconSize * 0.14);
-    public double Gap => Math.Round(IconSize * 0.1);
-    public double BarHeight => IconSize + Pad * 2 + 4;
-    // Room above the bar for magnified icons and the label.
-    public double Height => BarHeight + IconSize * (Magnification - 1) + 46;
+    public double Gap => Math.Round(IconSize * Spacing);
+    public double BarThickness => IconSize + Pad * 2 + 4;
+    // How deep the window has to be: the bar, magnified icons above it, and the label beyond them.
+    public double Thickness => Margin + BarThickness + IconSize * (Magnification - 1) + (Side ? 230 : 46);
 
     public DockView()
     {
         label.Child = labelText;
         label.Visibility = Visibility.Collapsed;
-        bar.CornerRadius = new CornerRadius(20);
         bar.BorderThickness = new Thickness(1);
         bar.IsHitTestVisible = false;
         canvas.Children.Add(bar);
@@ -54,13 +65,15 @@ public sealed class DockView
     public void Restyle(bool darkMode)
     {
         dark = darkMode;
+        var alpha = Math.Clamp(Opacity, 0.05, 1);
+        bar.CornerRadius = new CornerRadius(Radius);
         bar.Background = new LinearGradientBrush
         {
-            StartPoint = new Point(0, 0), EndPoint = new Point(0, 1),
+            StartPoint = new Point(0, 0), EndPoint = Side ? new Point(1, 0) : new Point(0, 1),
             GradientStops =
             {
-                new GradientStop { Color = dark ? Color.FromArgb(150, 52, 52, 56) : Color.FromArgb(170, 250, 250, 252), Offset = 0 },
-                new GradientStop { Color = dark ? Color.FromArgb(165, 30, 30, 34) : Color.FromArgb(185, 232, 232, 238), Offset = 1 },
+                new GradientStop { Color = dark ? Color.FromArgb((byte)(230 * alpha), 52, 52, 56) : Color.FromArgb((byte)(255 * alpha), 250, 250, 252), Offset = 0 },
+                new GradientStop { Color = dark ? Color.FromArgb((byte)(250 * alpha), 30, 30, 34) : Color.FromArgb((byte)(255 * alpha), 232, 232, 238), Offset = 1 },
             },
         };
         bar.BorderBrush = new SolidColorBrush(dark ? Color.FromArgb(60, 255, 255, 255) : Color.FromArgb(40, 0, 0, 0));
@@ -68,10 +81,15 @@ public sealed class DockView
         label.BorderBrush = new SolidColorBrush(dark ? Color.FromArgb(50, 255, 255, 255) : Color.FromArgb(30, 0, 0, 0));
         label.BorderThickness = new Thickness(1);
         labelText.Foreground = new SolidColorBrush(dark ? Colors.White : Color.FromArgb(255, 20, 20, 20));
-        foreach (var (_, dot) in faces.Values) dot.Fill = DotBrush();
+        foreach (var (face, mark) in faces.Values)
+        {
+            mark.Fill = MarkBrush();
+            if (face is Rectangle line) line.Fill = LineBrush();
+        }
     }
 
-    private Brush DotBrush() => new SolidColorBrush(dark ? Color.FromArgb(200, 255, 255, 255) : Color.FromArgb(170, 0, 0, 0));
+    private Brush MarkBrush() => new SolidColorBrush(dark ? Color.FromArgb(200, 255, 255, 255) : Color.FromArgb(170, 0, 0, 0));
+    private Brush LineBrush() => new SolidColorBrush(dark ? Color.FromArgb(70, 255, 255, 255) : Color.FromArgb(60, 0, 0, 0));
 
     public void Resize(double w, double h)
     {
@@ -86,21 +104,19 @@ public sealed class DockView
     {
         foreach (var gone in items.Where(i => !next.Contains(i)))
         {
-            var (face, dot) = faces[gone];
+            var (face, mark) = faces[gone];
             canvas.Children.Remove(face);
-            canvas.Children.Remove(dot);
+            canvas.Children.Remove(mark);
             faces.Remove(gone);
         }
         foreach (var item in next.Where(i => !faces.ContainsKey(i)))
         {
-            FrameworkElement face = item.Kind == ItemKind.Separator
-                ? new Rectangle { Width = 1, Fill = new SolidColorBrush(dark ? Color.FromArgb(70, 255, 255, 255) : Color.FromArgb(60, 0, 0, 0)) }
-                : new Image { Stretch = Stretch.Uniform };
+            FrameworkElement face = item.Kind == ItemKind.Separator ? new Rectangle { Fill = LineBrush() } : new Image { Stretch = Stretch.Uniform };
             face.IsHitTestVisible = false;
-            var dot = new Ellipse { Width = 4, Height = 4, Fill = DotBrush(), IsHitTestVisible = false };
+            var mark = new Rectangle { Fill = MarkBrush(), IsHitTestVisible = false, Opacity = 0 };
             canvas.Children.Insert(canvas.Children.IndexOf(label), face);
-            canvas.Children.Insert(canvas.Children.IndexOf(label), dot);
-            faces[item] = (face, dot);
+            canvas.Children.Insert(canvas.Children.IndexOf(label), mark);
+            faces[item] = (face, mark);
         }
         items = next;
         foreach (var item in items) if (faces[item].Face is Image image) image.Source = item.Icon;
@@ -111,22 +127,31 @@ public sealed class DockView
         if (faces.TryGetValue(item, out var f) && f.Face is Image image) image.Source = item.Icon;
     }
 
+    // A rectangle given along the dock (m, length lm) and out from the screen's edge (c, depth lc), in canvas terms.
+    private Rect At(double m, double c, double lm, double lc) => Edge switch
+    {
+        DockEdge.Left => new Rect(c, m, lc, lm),
+        DockEdge.Right => new Rect(width - c - lc, m, lc, lm),
+        _ => new Rect(m, height - c - lc, lm, lc),
+    };
+
+    private double Length => Side ? height : width;
+
     // One frame: eases each icon's size toward where the pointer wants it, lays the dock out, and returns the parts
-    // that take clicks (the bar and anything sticking out above it) for the window's shape.
+    // that take clicks (the bar first, then anything sticking out beyond it) for the window's shape.
     public List<Rect> Frame(DateTimeOffset now)
     {
         var s = IconSize;
         // The icons' resting centres, which the pointer's distance is measured from.
         var rest = new List<double>();
-        double total = Pad * 2, x;
-        foreach (var item in items) total += Width(item, 1);
-        total += Gap * Math.Max(0, items.Count - 1);
-        x = (width - total) / 2 + Pad;
+        double total = Pad * 2 + Gap * Math.Max(0, items.Count - 1), m;
+        foreach (var item in items) total += Size(item, 1);
+        m = (Length - total) / 2 + Pad;
         foreach (var item in items)
         {
-            var w = Width(item, 1);
-            rest.Add(x + w / 2);
-            x += w + Gap;
+            var w = Size(item, 1);
+            rest.Add(m + w / 2);
+            m += w + Gap;
         }
 
         var range = s * 3.2;
@@ -134,9 +159,9 @@ public sealed class DockView
         {
             var item = items[i];
             var target = 1.0;
-            if (item.Kind != ItemKind.Separator && PointerX is double px && Magnification > 1)
+            if (item.Kind != ItemKind.Separator && Pointer is double p && Magnification > 1)
             {
-                var d = Math.Min(Math.Abs(px - rest[i]) / range, 1);
+                var d = Math.Min(Math.Abs(p - rest[i]) / range, 1);
                 target = 1 + (Magnification - 1) * (Math.Cos(d * Math.PI) + 1) / 2;
             }
             item.Scale += (target - item.Scale) * 0.32;
@@ -144,23 +169,23 @@ public sealed class DockView
         }
 
         total = Pad * 2 + Gap * Math.Max(0, items.Count - 1);
-        foreach (var item in items) total += Width(item, item.Scale);
-        var drop = Tucked * (BarHeight + 12);
-        var barTop = height - 8 - BarHeight + drop;
-        var left = (width - total) / 2;
-        Place(bar, left, barTop, total, BarHeight);
+        foreach (var item in items) total += Size(item, item.Scale);
+        var barC = Margin - Tucked * (Margin + BarThickness + 12);
+        var start = (Length - total) / 2;
+        var barRect = At(start, barC, total, BarThickness);
+        Put(bar, barRect);
 
-        var shapes = new List<Rect> { new(left, barTop, total, BarHeight) };
-        x = left + Pad;
+        var shapes = new List<Rect> { barRect };
+        m = start + Pad;
         Hovered = null;
         foreach (var item in items)
         {
-            var w = Width(item, item.Scale);
-            var (face, dot) = faces[item];
+            var w = Size(item, item.Scale);
+            var (face, mark) = faces[item];
             if (item.Kind == ItemKind.Separator)
             {
-                Place(face, x + w / 2, barTop + Pad, 1, BarHeight - Pad * 2);
-                dot.Opacity = 0;
+                Put(face, At(m + w / 2, barC + Pad, 1, BarThickness - Pad * 2));
+                mark.Opacity = 0;
             }
             else
             {
@@ -169,31 +194,45 @@ public sealed class DockView
                 {
                     var t = (now - at).TotalSeconds;
                     if (t > 6 || item.Running) item.LaunchedAt = null;
-                    else bounce = Math.Abs(Math.Sin(t * Math.PI * 1.6)) * s * 0.45;
+                    else if (Bounce) bounce = Math.Abs(Math.Sin(t * Math.PI * 1.6)) * s * 0.45;
                 }
-                var top = barTop + BarHeight - Pad - 4 - w - bounce;
-                Place(face, x, top, w, w);
-                if (top < barTop) shapes.Add(new Rect(x, top, w, barTop - top));
-                Place(dot, x + w / 2 - 2, barTop + BarHeight - Pad + 1, 4, 4);
-                dot.Opacity = item.Running ? 1 : 0;
-                if (PointerX is double px && px >= x - Gap / 2 && px < x + w + Gap / 2) Hovered = item;
+                var iconC = barC + Pad + 4 + bounce;
+                Put(face, At(m, iconC, w, w));
+                if (iconC + w > barC + BarThickness) shapes.Add(At(m, barC + BarThickness, w, iconC + w - barC - BarThickness));
+                // The running mark, between the icon and the screen's edge: a dot or a short line.
+                var markC = barC + (Pad + 4) / 2 - 1;
+                if (Indicator == DockIndicator.Line)
+                {
+                    Put(mark, At(m + w * 0.3, markC, w * 0.4, 3));
+                    mark.RadiusX = mark.RadiusY = 1.5;
+                }
+                else
+                {
+                    Put(mark, At(m + w / 2 - 2, markC, 4, 4));
+                    mark.RadiusX = mark.RadiusY = 2;
+                }
+                mark.Opacity = item.Running && Indicator != DockIndicator.None ? 1 : 0;
+                if (Pointer is double p && p >= m - Gap / 2 && p < m + w + Gap / 2) Hovered = item;
             }
-            item.X = x;
-            x += w + Gap;
+            item.X = m;
+            m += w + Gap;
         }
 
-        if (Hovered is { } hovered && Tucked < 0.5)
+        if (Labels && Hovered is { } hovered && Tucked < 0.5)
         {
             labelText.Text = hovered.Label;
             label.Visibility = Visibility.Visible;
             label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             var size = label.DesiredSize;
-            var w = Width(hovered, hovered.Scale);
-            var top = barTop + BarHeight - Pad - 4 - w - size.Height - 10;
-            var lx = Math.Clamp(hovered.X + w / 2 - size.Width / 2, 4, width - size.Width - 4);
-            Canvas.SetLeft(label, lx);
-            Canvas.SetTop(label, top);
-            shapes.Add(new Rect(lx, top, size.Width, size.Height));
+            var w = Size(hovered, hovered.Scale);
+            var beyond = barC + Pad + 4 + w + 10;
+            // Along the dock, the label is as long as it is wide (bottom) or tall (sides).
+            var along = Side ? size.Height : size.Width;
+            var lm = Math.Clamp(hovered.X + w / 2 - along / 2, 4, Math.Max(4, Length - along - 4));
+            var rect = At(lm, beyond, along, Side ? size.Width : size.Height);
+            Canvas.SetLeft(label, rect.X);
+            Canvas.SetTop(label, rect.Y);
+            shapes.Add(rect);
         }
         else
         {
@@ -203,20 +242,18 @@ public sealed class DockView
     }
 
     // Whether anything is still moving, so the window can stop drawing frames when the dock is at rest.
-    public bool Settled => items.All(i => i.LaunchedAt is null && (i.Scale == 1 || PointerX is not null) && Math.Abs(i.Scale - Target(i)) < 0.002);
+    public bool Settled => items.All(i => i.LaunchedAt is null && (Pointer is not null || i.Scale == 1));
 
-    private double Target(DockItem item) => PointerX is null || item.Kind == ItemKind.Separator ? 1 : item.Scale;
+    public DockItem? ItemAt(double p) =>
+        items.FirstOrDefault(i => i.Kind != ItemKind.Separator && p >= i.X - Gap / 2 && p < i.X + Size(i, i.Scale) + Gap / 2);
 
-    public DockItem? ItemAt(double px) =>
-        items.FirstOrDefault(i => i.Kind != ItemKind.Separator && px >= i.X - Gap / 2 && px < i.X + Width(i, i.Scale) + Gap / 2);
+    private double Size(DockItem item, double scale) => item.Kind == ItemKind.Separator ? Math.Max(Gap, 6) : IconSize * scale;
 
-    private double Width(DockItem item, double scale) => item.Kind == ItemKind.Separator ? Gap : IconSize * scale;
-
-    private static void Place(FrameworkElement el, double x, double y, double w, double h)
+    private static void Put(FrameworkElement el, Rect r)
     {
-        Canvas.SetLeft(el, x);
-        Canvas.SetTop(el, y);
-        el.Width = Math.Max(0, w);
-        el.Height = Math.Max(0, h);
+        Canvas.SetLeft(el, r.X);
+        Canvas.SetTop(el, r.Y);
+        el.Width = Math.Max(0, r.Width);
+        el.Height = Math.Max(0, r.Height);
     }
 }
