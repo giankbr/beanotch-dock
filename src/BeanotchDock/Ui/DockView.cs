@@ -160,6 +160,7 @@ public sealed class DockView
             if (item.Kind == ItemKind.Separator)
             {
                 Place(face, x + w / 2, barTop + Pad, 1, BarHeight - Pad * 2);
+                dot.Opacity = 0;
             }
             else
             {

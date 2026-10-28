@@ -39,6 +39,9 @@ jobs:
           $dir = Join-Path $env:RUNNER_TEMP "snapshots"
           New-Item -ItemType Directory -Force $dir | Out-Null
           $env:BEANOTCH_DOCK_SNAPSHOT = $dir
+          # A clean desktop: the runner's own console out of the way.
+          (New-Object -ComObject Shell.Application).MinimizeAll()
+          Start-Sleep -Seconds 2
           $app = Start-Process out/BeanotchDock/BeanotchDock.exe -PassThru
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
           function Shot($name) {

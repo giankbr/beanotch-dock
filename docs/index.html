@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beanotch Dock — The Mac dock, right on Windows</title>
+<meta name="description" content="Beanotch Dock brings the macOS Dock to Windows 10 and 11: magnifying icons, running dots, pinned apps, Downloads and the Recycle Bin, auto-hide. Free and open source.">
+<meta property="og:title" content="Beanotch Dock — The Mac dock, right on Windows">
+<meta property="og:description" content="A macOS-style dock for Windows. Free and open source.">
+<meta property="og:image" content="assets/dock-magnified-light.png">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.454.0/dist/umd/lucide.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
+<style>
+:root {
+  --bg: #FAFAF8; --surface: #FFFFFF; --surface-2: #EEEEEB; --inner: #F5F5F2; --border: #E3E3DF; --border-strong: #CFCFCA;
+  --text-1: #111111; --text-2: #55555A; --text-3: #8C8C8C; --title-2: #A3A3A3; --accent: #3B8BFF; --live: #16A34A;
+  --sky: #81A9D3; --ui-1: #F2F2EF; --ui-2: #E8E8E4; --ui-3: #D4D4D0; --ui-active: #FFFFFF; --bg-deep: #F3F3F0;
+  --banner-bg: #E8F0FF; --banner-fg: #1F5FCC;
+  --key-top: #FFFFFF; --key-bottom: #F1F1EE; --key-line: rgba(0,0,0,.08); --key-edge: rgba(0,0,0,.12); --key-shine: rgba(255,255,255,.9); --font: "Be Vietnam Pro", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121212; --surface: #1B1B1B; --surface-2: #222222; --inner: #161616; --border: #2A2A2A; --border-strong: #3A3A3A;
+    --text-1: #F2F2F2; --text-2: #A1A1A1; --text-3: #6B6B6B; --title-2: #707070; --live: #4ADE80;
+    --ui-1: #1C1C1C; --ui-2: #262626; --ui-3: #333333; --ui-active: #171717; --bg-deep: #0C0C0C;
+    --banner-bg: #0E1626; --banner-fg: #A9C8FF; color-scheme: dark;
+    --key-top: #2F2F2F; --key-bottom: #222222; --key-line: rgba(255,255,255,.08); --key-edge: rgba(0,0,0,.45); --key-shine: rgba(255,255,255,.1);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121212; --surface: #1B1B1B; --surface-2: #222222; --inner: #161616; --border: #2A2A2A; --border-strong: #3A3A3A;
+  --text-1: #F2F2F2; --text-2: #A1A1A1; --text-3: #6B6B6B; --title-2: #707070; --live: #4ADE80;
+  --ui-1: #1C1C1C; --ui-2: #262626; --ui-3: #333333; --ui-active: #171717; --bg-deep: #0C0C0C;
+  --banner-bg: #0E1626; --banner-fg: #A9C8FF; color-scheme: dark;
+    --key-top: #2F2F2F; --key-bottom: #222222; --key-line: rgba(255,255,255,.08); --key-edge: rgba(0,0,0,.45); --key-shine: rgba(255,255,255,.1);
+}
+:root[data-font="sf"] { --font: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, sans-serif; }
+:root[data-font="inter"] { --font: "Inter", system-ui, sans-serif; }
+:root[data-font="jakarta"] { --font: "Plus Jakarta Sans", system-ui, sans-serif; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-stopped { overflow: hidden; }
+body { margin: 0; background: var(--bg); color: var(--text-1); font-family: var(--font); -webkit-font-smoothing: antialiased; transition: background .25s, color .25s; }
+img { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+i[data-lucide], svg.lucide { width: 16px; height: 16px; stroke-width: 1.75; flex-shrink: 0; }
+
+/* Buttons: shaded like a raised key — light from above, a bevel along the bottom edge, no drop shadow. Pressing flips the bevel. */
+.btn { position: relative; display: inline-flex; align-items: center; gap: 9px; height: 52px; padding: 0 26px; border-radius: 16px; font: 600 16px var(--font); border: 0; cursor: pointer; white-space: nowrap;
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease; -webkit-tap-highlight-color: transparent; }
+.btn:active { transform: translateY(1px); transition-duration: .05s; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.btn-primary { color: #fff; text-shadow: 0 1px 0 rgba(10,50,130,.3); background: linear-gradient(180deg, #6AADFF 0%, #3B8BFF 50%, #2C74E6 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -3px 0 rgba(12,56,150,.45), inset 0 0 0 1px rgba(20,70,170,.35); }
+.btn-primary:hover { filter: brightness(1.06); }
+.btn-primary:active { box-shadow: inset 0 2px 3px rgba(12,56,150,.5), inset 0 0 0 1px rgba(20,70,170,.4); }
+.btn-ghost { color: var(--text-1); background: linear-gradient(180deg, var(--key-top), var(--key-bottom));
+  box-shadow: inset 0 1px 0 var(--key-shine), inset 0 -3px 0 var(--key-edge), inset 0 0 0 1px var(--key-line); }
+.btn-ghost:hover { filter: brightness(1.04); }
+.btn-ghost:active { box-shadow: inset 0 2px 3px var(--key-edge), inset 0 0 0 1px var(--key-line); }
+.btn-sm { height: 38px; padding: 0 16px; border-radius: 12px; font-size: 14px; }
+
+/* Announcement + nav */
+.banner { background: var(--banner-bg); color: var(--banner-fg); border-bottom: 1px solid var(--border); font-size: 13.5px; font-weight: 500; }
+.banner a { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 9px 16px; text-align: center; }
+/* A floating bar: the brand, the sections in one tray with the one in view lit, and the actions. */
+nav { position: sticky; top: 0; z-index: 20; padding: 12px 16px 0; pointer-events: none; }
+nav .bar { pointer-events: auto; max-width: 1180px; margin: 0 auto; height: 62px; padding: 0 10px 0 18px; border-radius: 20px;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+  background: color-mix(in srgb, var(--surface) 70%, transparent); border: 1px solid var(--border);
+  backdrop-filter: saturate(160%) blur(18px); -webkit-backdrop-filter: saturate(160%) blur(18px);
+  box-shadow: 0 12px 32px -20px rgba(0,0,0,.45); transition: background .3s, box-shadow .3s; }
+.brand { justify-self: start; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; letter-spacing: -.3px; }
+.brand img { width: 28px; height: 28px; border-radius: 8px; }
+.nav-links { display: flex; gap: 2px; padding: 4px; border-radius: 13px; font-size: 14px; font-weight: 500; white-space: nowrap;
+  background: color-mix(in srgb, var(--text-1) 5%, transparent); box-shadow: inset 0 0 0 1px var(--border); }
+.nav-links a { padding: 7px 14px; border-radius: 10px; color: var(--text-2); transition: color .2s, background .2s, box-shadow .2s; }
+.nav-links a:hover { color: var(--text-1); }
+.nav-links a.on { color: var(--text-1); background: linear-gradient(180deg, var(--key-top), var(--key-bottom));
+  box-shadow: inset 0 1px 0 var(--key-shine), inset 0 -2px 0 var(--key-edge), inset 0 0 0 1px var(--key-line); }
+@media (max-width: 1100px) { .nav-links a { padding: 7px 10px; } }
+.nav-right { justify-self: end; display: flex; gap: 8px; align-items: center; }
+.nav-right .btn { height: 40px; }
+.icon-btn { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; border: 0; color: var(--text-2); cursor: pointer;
+  background: linear-gradient(180deg, var(--key-top), var(--key-bottom)); transition: transform .12s, box-shadow .12s, color .12s;
+  box-shadow: inset 0 1px 0 var(--key-shine), inset 0 -2px 0 var(--key-edge), inset 0 0 0 1px var(--key-line); }
+.icon-btn:hover { color: var(--text-1); }
+.icon-btn:active { transform: translateY(1px); box-shadow: inset 0 2px 3px var(--key-edge), inset 0 0 0 1px var(--key-line); }
+
+/* Hero */
+.hero { text-align: center; padding: 72px 0 0; position: relative; }
+.pill { display: inline-flex; align-items: center; gap: 10px; padding: 5px 12px 5px 6px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 13px; color: var(--text-2); }
+.pill b { font-size: 11px; letter-spacing: .6px; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--text-1); }
+h1 { font-size: clamp(42px, 7vw, 76px); line-height: 1.04; font-weight: 700; letter-spacing: -2.5px; margin: 26px 0 22px; }
+.lead { font-size: 18px; line-height: 1.6; color: var(--text-2); max-width: 640px; margin: 0 auto; }
+.cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 34px; }
+.meta { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; margin-top: 26px; font-size: 14px; color: var(--text-2); }
+.meta span { display: inline-flex; gap: 8px; align-items: center; }
+.meta svg { color: var(--text-3); }
+.hero-shot { position: relative; margin: 60px auto 0; max-width: 1200px; background: var(--sky); border-radius: 24px; padding: 0 58px; overflow: hidden; }
+.hero-shot img { width: 100%; }
+.hero-glow { position: absolute; left: 6%; right: 6%; bottom: -40px; height: 90px; background: radial-gradient(60% 100% at 50% 0%, rgba(59,139,255,.55), transparent 70%); filter: blur(24px); z-index: -1; }
+
+/* Stats */
+.stats { margin-top: 90px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.stats .wrap { display: grid; grid-template-columns: repeat(4, 1fr); max-width: 1040px; }
+.stat { text-align: center; padding: 56px 12px; position: relative; }
+.stat + .stat::before { content: ""; position: absolute; left: 0; top: 50%; height: 44px; transform: translateY(-50%); width: 1px; background: var(--border); }
+.stat strong { display: block; font-size: 40px; font-weight: 600; letter-spacing: -1px; }
+.stat span { display: block; font-size: 14px; color: var(--text-3); margin-top: 8px; }
+
+/* Sections */
+section { padding: 120px 0; }
+.eyebrow { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; color: var(--text-2); }
+.eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+h2 { font-size: clamp(38px, 5vw, 56px); font-weight: 600; letter-spacing: -2px; line-height: 1.08; margin: 22px 0 22px; }
+h2 em { font-style: normal; color: var(--title-2); display: block; }
+.sub { font-size: 17px; line-height: 1.65; color: var(--text-2); max-width: 580px; }
+.center { text-align: center; }
+.center .sub { margin: 0 auto; }
+.head-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; flex-wrap: wrap; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+.panel-card .shot { background: var(--sky); margin: 8px 8px 0; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; aspect-ratio: 16 / 6.5; }
+.panel-card .shot img { width: 92%; }
+.panel-card .txt { display: grid; grid-template-columns: 200px 1fr; gap: 16px; padding: 24px 22px 26px; }
+.panel-card h3, .closed-card h3 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.2px; }
+.panel-card p, .closed-card p, .mini p { margin: 0; color: var(--text-2); font-size: 15px; line-height: 1.6; }
+.panels { margin-top: 64px; }
+.also { margin-top: 64px; }
+.mini { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.mini h3 { margin: 0; font-size: 19px; font-weight: 600; }
+.mini .ui { background: var(--inner); border: 1px solid var(--border); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 196px; font-size: 13.5px; }
+.mini .ui-shot { width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--border); background: #0F0F10; }
+.drop { border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-2); padding: 14px; text-align: center; font-weight: 500; }
+.drop small { display: block; color: var(--text-3); font-size: 11.5px; margin-top: 4px; font-weight: 400; }
+.drop b { color: var(--accent); font-weight: 500; }
+.row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--border); }
+.row:last-child { border: 0; }
+.row small { color: var(--text-3); font-size: 11.5px; display: block; }
+.row .r { margin-left: auto; color: var(--text-3); font-size: 12px; }
+.chip { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; display: flex; gap: 10px; align-items: center; }
+.app-row { display: flex; gap: 12px; align-items: center; background: var(--surface); border-radius: 12px; padding: 10px; }
+.app-row .ico { width: 32px; height: 32px; border-radius: 8px; background: #6E5BFF; display: grid; place-items: center; color: #fff; }
+.app-row strong { font-size: 14px; font-weight: 600; }
+.app-row .size { margin-left: auto; color: var(--accent); font-weight: 600; }
+
+/* Closed notch */
+#closed { background: var(--bg-deep); border-top: 1px solid var(--border); }
+.gestures { display: grid; gap: 12px; font-size: 15px; }
+.gestures div { display: flex; gap: 12px; align-items: center; }
+.gestures kbd { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: var(--surface-2); font: 500 14px var(--font); color: var(--text-1); }
+.gestures b { font-weight: 600; }
+.gestures span { color: var(--text-3); }
+.closed-grid { margin-top: 56px; }
+.closed-card .strip { background: var(--sky); height: 92px; display: flex; justify-content: center; align-items: flex-start; overflow: hidden; }
+/* Every crop is the notch at 2×, 64 px tall: shown at 1× they all share one scale. */
+.closed-card .strip img { height: 32px; width: auto; max-width: 96%; object-fit: contain; object-position: top; }
+.closed-card .txt { padding: 22px 24px 24px; display: grid; gap: 8px; }
+.more { background: var(--accent); color: #fff; border: 0; padding: 30px 28px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.more h3 { color: #fff; font-size: 24px; }
+.more p { color: rgba(255,255,255,.88); }
+
+/* Features */
+.feature { padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; }
+.feature > div { background: var(--inner); border-radius: 17px; padding: 22px 22px 24px; height: 100%; }
+.feature h3 { display: flex; gap: 12px; align-items: center; margin: 0 0 14px; font-size: 18px; font-weight: 600; }
+.feature h3 span { width: 36px; height: 36px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; }
+.feature p { margin: 0; color: var(--text-2); font-size: 15px; line-height: 1.6; }
+
+/* Customize */
+.custom { margin-top: 64px; display: grid; grid-template-columns: 1.6fr 1fr; padding: 0; }
+.preview { background: var(--sky); position: relative; display: flex; align-items: center; justify-content: center; padding: 60px 36px; min-height: 520px; }
+.preview img { width: 100%; max-width: 720px; height: auto; transition: opacity .25s ease, filter .35s ease; }
+.preview img.swap { opacity: .35; }
+.preview .live { position: absolute; left: 24px; bottom: 22px; font-size: 13px; color: #fff; background: rgba(28,42,66,.78); padding: 7px 14px; border-radius: 999px; display: flex; align-items: center; gap: 8px; }
+.preview .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #4ADE80; }
+.settings { padding: 30px 32px; display: flex; flex-direction: column; gap: 24px; }
+.settings h3 { margin: 0; font-size: 20px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+.settings h3 small { font-size: 12px; color: var(--text-3); font-weight: 400; }
+.settings label { display: block; font-size: 13.5px; color: var(--text-2); margin-bottom: 10px; }
+.seg { display: flex; background: var(--ui-2); border-radius: 12px; padding: 3px; }
+.seg button { flex: 1; border: 0; background: transparent; font: 500 14px var(--font); color: var(--text-2); padding: 8px 6px; border-radius: 9px; cursor: pointer; transition: background .2s, color .2s; }
+.seg button[aria-pressed="true"] { background: var(--ui-active); color: var(--text-1); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 0 0 .5px var(--border); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.dots { display: flex; gap: 10px; flex-wrap: wrap; }
+.dots button { width: 28px; height: 28px; border-radius: 50%; border: 0; cursor: pointer; background: var(--c); box-shadow: 0 0 0 2px var(--surface), 0 0 0 2px transparent; transition: box-shadow .2s; }
+.dots button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text-1); }
+.shapes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.shapes button { border: 1px solid var(--border); background: var(--ui-1); border-radius: 12px; height: 64px; cursor: pointer; font: 500 13px var(--font); color: var(--text-2); display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 0 0 8px; }
+.shapes button::before { content: ""; background: #000; width: 46px; height: 14px; border-radius: 0 0 10px 10px; }
+.shapes button[data-s="seamless"]::before { width: 76px; border-radius: 0; }
+.shapes button[data-s="floating"]::before { width: 46px; border-radius: 10px; margin-top: 8px; }
+.shapes button[aria-pressed="true"] { border-color: var(--text-1); background: var(--ui-active); color: var(--text-1); font-weight: 600; }
+.toggle-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 20px; }
+.toggle-row strong { font-size: 15px; font-weight: 600; display: block; }
+.toggle-row small { color: var(--text-3); font-size: 12.5px; }
+.switch { width: 40px; height: 24px; border-radius: 999px; background: var(--accent); position: relative; border: 0; cursor: pointer; transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 19px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .2s; }
+.switch[aria-checked="false"] { background: var(--ui-3); }
+.switch[aria-checked="false"]::after { left: 3px; }
+
+/* FAQ */
+.faq { display: grid; grid-template-columns: 1fr 1.25fr; gap: 80px; }
+details { border-top: 1px solid var(--border); }
+details:last-child { border-bottom: 1px solid var(--border); }
+summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 0; font-size: 17px; font-weight: 500; }
+summary::-webkit-details-marker { display: none; }
+summary svg { color: var(--text-3); transition: transform .2s; }
+details[open] summary svg { transform: rotate(180deg); }
+details p { margin: 0 0 20px; color: var(--text-2); font-size: 15px; line-height: 1.65; }
+code { font-family: var(--mono); font-size: .9em; background: var(--surface-2); padding: 2px 6px; border-radius: 6px; }
+
+/* CTA */
+.cta { display: grid; grid-template-columns: 1.08fr 1fr; padding: 0; }
+.cta .left { padding: 56px 52px; }
+.cta h2 { font-size: clamp(36px, 4.4vw, 56px); }
+.cta h2 { margin-top: 20px; }
+.steps { margin-top: 32px; border-top: 1px solid var(--border); }
+.steps div { display: grid; grid-template-columns: 26px minmax(110px, 140px) 1fr; gap: 14px; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border); }
+.steps span { width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; font-size: 12.5px; }
+.steps strong { font-weight: 600; font-size: 15px; }
+.steps p { margin: 0; color: var(--text-3); font-size: 14.5px; line-height: 1.5; }
+.cta .right { background: var(--sky); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 76px 36px 44px; }
+.cta .right .menubar { position: absolute; top: 0; left: 0; right: 0; height: 28px; display: flex; justify-content: space-between; align-items: center; padding: 0 16px; font-size: 12px; color: rgba(255,255,255,.9); }
+.cta .right .notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 58%; max-width: 360px; }
+.cta .right .window { width: 100%; max-width: 540px; filter: drop-shadow(0 24px 40px rgba(20,40,70,.35)); }
+.term { width: 100%; max-width: 520px; background: #111; color: #EDEDED; font: 400 12.5px var(--mono); border-radius: 12px; padding: 12px 14px; display: flex; gap: 14px; align-items: center; }
+.term span { color: #777; }
+.term code { background: none; padding: 0; flex: 1; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.term button { background: none; border: 0; color: #999; cursor: pointer; display: grid; place-items: center; }
+.term button:hover { color: #fff; }
+
+/* Tip jar */
+.tip { margin-top: 16px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 20px; padding: 24px 28px; }
+.tip .cup { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; color: #A0663F;
+  background: linear-gradient(180deg, #FFF3E8, #F7E2CF); box-shadow: inset 0 0 0 1px rgba(160,102,63,.18); }
+.tip .cup svg { width: 26px; height: 26px; }
+.tip h3 { margin: 0 0 4px; font-size: 19px; }
+.tip p { margin: 0; color: var(--text-2); font-size: 15px; line-height: 1.5; }
+@media (max-width: 760px) { .tip { grid-template-columns: 1fr; text-align: center; justify-items: center; } }
+
+/* Footer */
+footer { padding: 0; overflow: hidden; }
+.foot { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 28px; width: min(1152px, calc(100% - 48px)); margin: 0 auto; }
+.running { position: absolute; top: 0; left: 50%; transform: translateX(-50%); background: #000; color: #fff; font-size: 13px; padding: 9px 20px; border-radius: 0 0 18px 18px; display: flex; gap: 10px; align-items: center; white-space: nowrap; }
+.running::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #4ADE80; }
+.foot-top { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px; padding: 80px 56px 48px; border-bottom: 1px solid var(--border); }
+.foot-top img { width: 88px; height: 88px; border-radius: 22px; box-shadow: 0 16px 30px -12px rgba(59,139,255,.6); }
+.foot-top h4 { margin: 0; font-size: 40px; font-weight: 700; letter-spacing: -1.2px; }
+.foot-top p { margin: 4px 0 0; color: var(--text-2); font-size: 17px; white-space: nowrap; }
+.foot-top .cta-row { margin: 0; flex-wrap: nowrap; gap: 10px; }
+.foot-top .cta-row .btn { height: 46px; padding: 0 18px; font-size: 15px; border-radius: 14px; }
+@media (max-width: 1240px) { .foot-top { grid-template-columns: auto 1fr; } .foot-top .cta-row { grid-column: 1 / -1; justify-content: flex-start; } }
+.cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding: 44px 56px; }
+.cols h5 { margin: 0 0 16px; font-size: 12px; letter-spacing: 1.6px; color: var(--text-3); font-weight: 600; }
+.cols a, .cols span { display: flex; gap: 8px; align-items: center; font-size: 15px; padding: 7px 0; color: var(--text-1); }
+.cols a:hover { color: var(--accent); }
+.cols .new { display: inline-block; padding: 2px 7px; line-height: 1.3; font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); padding: 2px 7px; border-radius: 999px; }
+.credits { display: grid; grid-template-columns: 1fr 1.7fr; gap: 40px; margin: 0 56px; padding: 44px 0; border-top: 1px solid var(--border); }
+.credits h4 { margin: 18px 0 14px; font-size: 22px; font-weight: 600; }
+.credits p { margin: 0; color: var(--text-3); font-size: 14px; line-height: 1.6; max-width: 300px; }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; align-content: flex-start; }
+.chips a { display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 999px; padding: 8px 14px; font-size: 14.5px; font-weight: 500; }
+.chips a svg { color: var(--text-3); }
+.chips a:hover { border-color: var(--border-strong); }
+.font-note { grid-column: 2; font-size: 12.5px; color: var(--text-3); display: flex; gap: 8px; justify-content: flex-start; align-items: center; }
+.bottom { display: flex; justify-content: space-between; padding: 22px 56px; background: var(--inner); border-top: 1px solid var(--border); border-radius: 0 0 28px 28px; font-size: 13.5px; color: var(--text-3); flex-wrap: wrap; gap: 8px; }
+/* The watermark: letters rise in once the footer shows, lift under the pointer, and an accent spotlight follows it. */
+.watermark { font-size: clamp(40px, 15vw, 216px); font-weight: 800; letter-spacing: -.035em; line-height: .78; text-align: center; margin-top: 30px; user-select: none; cursor: default; white-space: nowrap; padding-top: .06em; }
+.watermark span { display: inline-block; color: transparent; -webkit-background-clip: text; background-clip: text;
+  background-image: radial-gradient(circle at var(--mx, -999px) var(--my, -999px), color-mix(in srgb, var(--accent) 85%, transparent) 0, transparent 0.9em), linear-gradient(180deg, var(--ui-3), transparent 92%);
+  transform: translateY(var(--lift, 0)) scale(var(--grow, 1)); transform-origin: 50% 100%;
+  transition: transform .55s cubic-bezier(.3,1.5,.5,1), opacity .9s cubic-bezier(.2,.7,.2,1); }
+.watermark.idle span { opacity: 0; --lift: .35em; }
+.watermark span:nth-child(2) { transition-delay: 0s, .08s; }
+.watermark span:nth-child(3) { transition-delay: 0s, .16s; }
+.watermark span:nth-child(4) { transition-delay: 0s, .24s; }
+.watermark span:nth-child(5) { transition-delay: 0s, .32s; }
+.watermark span:nth-child(6) { transition-delay: 0s, .40s; }
+.watermark span:nth-child(7) { transition-delay: 0s, .48s; }
+.watermark span:nth-child(8) { transition-delay: 0s, .56s; }
+.watermark span:hover { --lift: -.08em; --grow: 1.03; }
+
+/* Small screens */
+@media (max-width: 960px) {
+  .nav-links { display: none; }
+  nav .bar { display: flex; justify-content: space-between; height: 58px; }
+  .grid-2, .grid-3, .faq, .cta, .custom, .credits { grid-template-columns: 1fr; }
+  .faq { gap: 32px; }
+  .panel-card .txt { grid-template-columns: 1fr; gap: 6px; }
+  .stats .wrap { grid-template-columns: repeat(2, 1fr); }
+  .stat:nth-child(3)::before { display: none; }
+  .hero-shot { padding: 0 14px; border-radius: 16px; margin-inline: 16px; }
+  .cta .left { padding: 40px 28px; }
+  .cols { grid-template-columns: repeat(2, 1fr); padding: 36px 28px; }
+  .foot-top { padding: 72px 28px 36px; grid-template-columns: 1fr; }
+  .foot-top .cta-row { flex-wrap: wrap; }
+  .foot-top .cta-row { margin: 0; justify-content: flex-start; }
+  .credits { margin: 0 28px; }
+  .chips { justify-content: flex-start; }
+  .font-note { grid-column: 1; justify-content: flex-start; text-align: left; }
+  .bottom { padding: 20px 28px; }
+  section { padding: 84px 0; }
+  .steps div { grid-template-columns: 28px 1fr; }
+  .steps p { grid-column: 2; }
+}
+/* Grid children may shrink below their content (long buttons, nowrap rows) instead of widening the page. */
+.cta > *, .custom > *, .faq > *, .grid-2 > *, .grid-3 > * { min-width: 0; }
+@media (max-width: 960px) {
+  .closed-grid { gap: 12px; }
+  .closed-card .strip { height: 64px; }
+  /* Same scale for every notch crop: 2x images shown at 0.3125x their pixel height. */
+  .closed-card .strip img { height: 20px; max-width: none; }
+  /* The newer crops carry text on both sides: shrink them to fit rather than cut them off. */
+  #new .closed-card .strip img { max-width: 94%; }
+  .closed-card .txt { padding: 14px 18px 16px; gap: 4px; }
+  .closed-card h3 { font-size: 16px; }
+  .closed-card p { font-size: 14px; }
+  .more { padding: 22px 20px; }
+  .more h3 { font-size: 20px; }
+  .head-row { gap: 24px; }
+  .gestures { grid-template-columns: repeat(3, auto); justify-content: start; gap: 10px 18px; font-size: 14px; }
+  .gestures div { gap: 8px; }
+  .gestures span { display: none; }
+}
+@media (max-width: 560px) {
+  .cta .left { padding: 32px 20px; }
+  .cta .right { padding: 64px 16px 32px; }
+  .cta .right .menubar { display: none; }
+  .cta-row .btn { flex: 1 1 auto; justify-content: center; }
+  .row { flex-wrap: wrap; }
+  h2 { letter-spacing: -1.2px; }
+  .btn { height: 48px; padding: 0 20px; font-size: 15px; }
+  nav .btn-ghost { display: none; }
+  .meta { gap: 14px 20px; }
+  .preview { min-height: 0; padding: 28px 12px 64px; }
+  .preview .live { left: 12px; right: 12px; bottom: 14px; justify-content: center; font-size: 12px; }
+  .seg button { font-size: 13px; padding: 8px 2px; white-space: nowrap; }
+  .settings { padding: 24px 20px; }
+  .two { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Motion: reveal on scroll, a hero that flattens out of a tilt, slow layers for depth */
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); transition-delay: var(--d, 0s); }
+.reveal.in { opacity: 1; transform: none; }
+h2 em { transition: opacity .9s .15s, transform .9s .15s cubic-bezier(.2,.7,.2,1); }
+.reveal:not(.in) h2 em, h2.reveal:not(.in) em { opacity: 0; transform: translateY(14px); }
+.hero h1 .w { display: inline-block; opacity: 0; transform: translateY(.4em); filter: blur(8px); animation: rise .9s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: calc(var(--i) * 70ms + 100ms); }
+@keyframes rise { to { opacity: 1; transform: none; filter: none; } }
+.hero .pill, .hero .lead, .hero .cta-row, .hero .meta { opacity: 0; animation: rise .8s cubic-bezier(.2,.7,.2,1) forwards; }
+.hero .pill { animation-delay: 0s; transform: translateY(10px); }
+.hero .lead { animation-delay: .45s; transform: translateY(12px); }
+.hero .cta-row { animation-delay: .6s; transform: translateY(12px); }
+.hero .meta { animation-delay: .75s; transform: translateY(12px); }
+.stage { perspective: 1400px; }
+.hero-shot { transform-origin: 50% 0%; transform: rotateX(var(--tilt, 18deg)) scale(var(--zoom, .92)); will-change: transform; opacity: 0; animation: fadein 1s .5s forwards; }
+@keyframes fadein { to { opacity: 1; } }
+.hero-shot img { transform: translateY(var(--shift, 0px)); will-change: transform; }
+.hero::before { content: ""; position: absolute; inset: -120px 0 auto; height: 620px; background: radial-gradient(42% 38% at 50% 52%, color-mix(in srgb, var(--accent) 14%, transparent), transparent); pointer-events: none; z-index: -1; transform: translateY(var(--glow, 0px)); }
+.closed-card .strip img { transform: translateY(-34px); transition: transform .7s cubic-bezier(.3,1.4,.5,1) .25s; }
+.closed-card.in .strip img { transform: none; }
+.panel-card .shot img, .preview img { transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+.panel-card:hover .shot img { transform: translateY(-6px) scale(1.02); }
+.card, .feature { transition: transform .35s cubic-bezier(.2,.7,.2,1), box-shadow .35s, border-color .35s; }
+.panel-card:hover, .closed-card:hover, .feature:hover, .mini:hover { transform: translateY(-4px); box-shadow: 0 18px 40px -22px rgba(0,0,0,.35); }
+nav.scrolled .bar { background: color-mix(in srgb, var(--surface) 86%, transparent); box-shadow: 0 16px 40px -18px rgba(0,0,0,.55); }
+.watermark { transform: translateY(var(--wm, 0px)); }
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .hero h1 .w, .hero .pill, .hero .lead, .hero .cta-row, .hero .meta, .hero-shot { opacity: 1 !important; transform: none !important; filter: none !important; animation: none !important; }
+  .closed-card .strip img, .watermark, .watermark span, .hero-shot img { transform: none !important; }
+  .watermark.idle span { opacity: 1; }
+}
+
+/* Windows beta */
+#windows { border-top: 1px solid var(--border); }
+.soon { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; letter-spacing: .4px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); padding: 5px 12px; border-radius: 999px; }
+.soon::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: blink 1.6s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.win-note { font-size: 13.5px; color: var(--text-3); margin-top: 14px; }
+.desk { position: relative; aspect-ratio: 16 / 10; border-radius: 22px; overflow: hidden; border: 1px solid var(--border);
+  background: radial-gradient(120% 90% at 20% 0%, #3d6fd8 0%, transparent 60%), radial-gradient(90% 80% at 100% 100%, #7a4fd6 0%, transparent 60%), #1b2a52; }
+.desk .island { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 58%; height: 34px; border-radius: 999px; background: #000;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: #fff; font-size: 12px; box-shadow: 0 10px 30px -10px rgba(0,0,0,.6); }
+.desk .island span:first-child { color: #9ec5ff; display: flex; gap: 8px; align-items: center; white-space: nowrap; overflow: hidden; }
+.desk .island span:first-child::before { content: ""; width: 14px; height: 14px; border-radius: 4px; background: linear-gradient(135deg, #ff9a4d, #b84fd6); flex: none; }
+.desk .bars { display: flex; gap: 2px; align-items: flex-end; height: 12px; }
+.desk .bars i { width: 3px; height: 8px; background: #9ec5ff; border-radius: 2px; animation: eq 1s ease-in-out infinite; }
+.desk .bars i:nth-child(2) { animation-delay: .2s; } .desk .bars i:nth-child(3) { animation-delay: .4s; } .desk .bars i:nth-child(4) { animation-delay: .1s; }
+@keyframes eq { 0%, 100% { height: 4px; } 50% { height: 12px; } }
+.desk .taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; background: rgba(20,24,36,.72); backdrop-filter: blur(16px); display: flex; justify-content: center; align-items: center; gap: 10px; }
+.desk .taskbar i { width: 26px; height: 26px; border-radius: 7px; background: rgba(255,255,255,.14); }
+.desk .taskbar i:first-child { background: linear-gradient(135deg, #4cc2ff, #0a6cff); }
+.desk .label { position: absolute; left: 16px; bottom: 58px; font-size: 12px; color: rgba(255,255,255,.75); background: rgba(0,0,0,.35); padding: 6px 12px; border-radius: 999px; }
+@media (max-width: 560px) { nav .btn { height: 36px; padding: 0 14px; font-size: 13.5px; border-radius: 11px; gap: 7px; } nav .btn svg.lucide { width: 14px; height: 14px; } }
+@media (max-width: 400px) { .brand { font-size: 17px; gap: 8px; } .brand img { width: 26px; height: 26px; } nav .btn { padding: 0 12px; } }
+@media (prefers-reduced-motion: reduce) { .soon::before, .desk .bars i { animation: none; } }
+/* Hero: the Mac and Windows side by side */
+.hero-shot.platform-stage { background: none; padding: 0; overflow: visible; border-radius: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; text-align: left; }
+.platform-stage .cap { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+.platform-stage .cap b { display: flex; gap: 10px; align-items: center; font-size: 16px; font-weight: 600; }
+.platform-stage .cap span { color: var(--text-3); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.platform-stage .shot { height: 300px; border-radius: 24px; overflow: hidden; display: flex; justify-content: center; align-items: flex-start;
+  box-shadow: 0 30px 60px -34px rgba(59,139,255,.55); }
+.platform-stage .shot:not(.desk) { background: var(--sky); }
+.platform-stage .shot img { width: 100%; max-width: 620px; }
+.platform-stage .desk.shot { aspect-ratio: auto; display: block; }
+svg.winlogo { width: 1.1em; height: 1.1em; }
+.platform-stage .cap svg.winlogo, .plat-card .title svg.winlogo, .get .title svg.winlogo { width: 1em; height: 1em; }
+/* Windows' island hangs from the top edge, like the notch: real renders from the app */
+.platform-stage .mac .panel, .platform-stage .desk .panel, .desk .panel { position: absolute; top: 0; left: 0; right: 0; margin: 0 auto; transform: none !important; width: 92%; max-width: 560px; height: auto; filter: drop-shadow(0 18px 30px rgba(0,0,0,.45)); }
+.platform-stage .shot.mac { position: relative; display: block; }
+.platform-stage .mac .panel { max-width: 600px; filter: drop-shadow(0 18px 30px rgba(10,40,90,.35)); }
+.plat-card .vis.win img { width: min(400px, 88%); display: block; filter: drop-shadow(0 12px 24px rgba(0,0,0,.4)); }
+.desk .island { top: 0 !important; border-radius: 0 0 18px 18px !important; }
+
+/* Mac vs Windows */
+.plat-card { padding: 0; overflow: hidden; border-radius: 24px; }
+.plat-card .vis { height: 120px; display: flex; justify-content: center; align-items: flex-start; }
+.plat-card .vis.mac { background: var(--sky); }
+.plat-card .vis.mac img { width: min(522px, 88%); }
+.plat-card .vis.win { background: radial-gradient(120% 140% at 30% 0%, #3b4a9e 0%, #1E2340 60%); }
+.plat-card .vis.win .island { width: min(380px, 88%); height: 40px; background: #000; border-radius: 0 0 20px 20px; display: flex; align-items: center; gap: 10px; padding: 0 18px;
+  color: #F5A524; font-size: 14px; font-weight: 600; }
+.plat-card .vis.win .island span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plat-card .vis.win .island em { color: #fff; font-style: normal; font-size: 12px; }
+.plat-card .body { padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+.plat-card .title, .get .title { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.plat-card .title b { display: flex; gap: 12px; align-items: center; font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
+.plat-card .title span { color: var(--text-3); font-size: 13px; text-align: right; }
+.lbl { display: flex; gap: 8px; align-items: center; font-size: 12px; font-weight: 700; color: var(--text-3); letter-spacing: .08em; }
+.lbl i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+.only { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
+.only li { display: flex; gap: 14px; align-items: flex-start; }
+.only .ib { width: 36px; height: 36px; border-radius: 10px; background: var(--surface-2); display: grid; place-items: center; flex: none; }
+.only.mac .ib svg { color: #3B8BFF; } .only.win .ib svg { color: #8C7CFF; }
+.only b { display: block; font-size: 15px; font-weight: 600; }
+.only span { display: block; color: var(--text-3); font-size: 14px; margin-top: 3px; line-height: 1.45; }
+.both { margin-top: 24px; padding: 32px; border-radius: 24px; }
+.both .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+.both .top > span { color: var(--text-3); font-size: 13px; }
+.both .groups { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.both .group { background: var(--inner); border: 1px solid var(--border); border-radius: 18px; padding: 18px 18px 6px; }
+.both .group h4 { margin: 0 0 8px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 600;
+  letter-spacing: .9px; text-transform: uppercase; color: var(--g); }
+.both .group h4 span { color: var(--text-3); font-size: 12px; letter-spacing: 0; }
+.both .group ul { list-style: none; margin: 0; padding: 0; }
+.both .group li { display: flex; gap: 12px; align-items: center; padding: 11px 0; border-top: 1px solid var(--border); font-size: 15px; font-weight: 500; }
+.both .group li:first-child { border-top: 0; }
+.both .ic { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 9px; color: var(--g);
+  background: color-mix(in srgb, var(--g) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--g) 22%, transparent); }
+.both .ic svg { width: 16px; height: 16px; }
+
+/* Get Beanotch: one card per platform */
+.get { padding: 40px; display: flex; flex-direction: column; gap: 24px; border-radius: 28px; }
+.get .title b { display: flex; gap: 12px; align-items: center; font-size: 30px; font-weight: 700; letter-spacing: -.6px; }
+.get .beta { padding: 5px 12px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); font-size: 13px; font-weight: 600; }
+.get .meta-line { margin: -8px 0 0; color: var(--text-3); font-size: 14px; }
+.get .steps { margin-top: 0; }
+.get .term { max-width: none; }
+.get .term code { white-space: normal; }
+@media (max-width: 960px) {
+  .hero-shot.platform-stage { grid-template-columns: 1fr; margin-inline: 16px; }
+  .both .groups { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .hero .pill { font-size: 11.5px; white-space: nowrap; gap: 6px; }
+  .platform-stage .shot { height: 220px; }
+  .platform-stage .shot.mac { height: auto; aspect-ratio: 2 / 1; }
+  .plat-card .body, .both, .get { padding: 24px; }
+  .plat-card .title { flex-wrap: wrap; }
+}
+/* The notch pet: pixel sprites kept crisp, in a few small grids. */
+.pet-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 56px; }
+.pet-card { padding: 26px 24px; display: flex; flex-direction: column; gap: 18px; }
+.pet-card h3 { margin: 0; font-size: 19px; font-weight: 600; }
+.pet-card > p { margin: -10px 0 0; color: var(--text-2); font-size: 15px; line-height: 1.6; }
+.sprite { image-rendering: pixelated; height: 44px; width: auto; display: block; }
+.pet-do { display: grid; gap: 12px; }
+.pet-do div { display: grid; grid-template-columns: 64px 1fr; gap: 14px; align-items: center; }
+.pet-do .sp { background: #0b0b0d; border-radius: 12px; height: 60px; display: flex; align-items: center; justify-content: center; }
+.pet-do b { display: block; font-weight: 600; font-size: 15px; }
+.pet-do span { color: var(--text-2); font-size: 14px; }
+.pet-moods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.pet-moods figure { margin: 0; background: #0b0b0d; border-radius: 12px; padding: 12px 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.pet-moods figcaption { color: #c4c4cc; font-size: 12.5px; text-align: center; line-height: 1.3; }
+.pet-wide { grid-column: 1 / -1; }
+.pet-wide .pet-moods { grid-template-columns: repeat(9, 1fr); }
+.pet-wide figcaption small { display: block; color: #8b8b94; font-size: 11.5px; }
+@media (max-width: 960px) {
+  .pet-grid { grid-template-columns: 1fr; margin-top: 40px; }
+  .pet-wide .pet-moods { grid-template-columns: repeat(3, 1fr); }
+  .pet-moods { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .pet-moods figure { padding: 10px 4px 8px; }
+  .pet-moods figcaption { font-size: 11.5px; }
+}
+
+/* Beanotch Dock: a desktop to set the dock on, and the dock itself in the theme's look. */
+:root[data-theme="dark"] .only-light, :root[data-theme="light"] .only-dark { display: none !important; }
+.desktop { position: relative; aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; border: 1px solid var(--border);
+  background: radial-gradient(110% 90% at 15% 10%, #6ea8ff 0%, transparent 55%), radial-gradient(90% 80% at 95% 15%, #c08bff 0%, transparent 55%),
+              radial-gradient(120% 100% at 60% 110%, #ff9a6b 0%, transparent 55%), #3b4f9c; }
+:root[data-theme="dark"] .desktop { background: radial-gradient(110% 90% at 15% 10%, #2b4fa8 0%, transparent 55%), radial-gradient(90% 80% at 95% 15%, #5b2f9c 0%, transparent 55%),
+              radial-gradient(120% 100% at 60% 110%, #9c3f2b 0%, transparent 55%), #10142a; }
+.desktop .win { position: absolute; border-radius: 12px; background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid rgba(255,255,255,.18);
+  box-shadow: 0 30px 60px -30px rgba(0,0,0,.55); overflow: hidden; }
+.desktop .win .tb { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 0 0 14px; border-bottom: 1px solid var(--border);
+  font-size: 12.5px; color: var(--text-2); }
+.desktop .win .tb span { display: flex; } .desktop .win .tb i { width: 44px; height: 34px; display: grid; place-items: center; color: var(--text-3); font-style: normal; font-size: 13px; }
+.desktop .win .body { padding: 16px; display: grid; gap: 10px; }
+.desktop .win .body b { display: block; height: 10px; border-radius: 5px; background: var(--surface-2); }
+.desktop .w1 { left: 7%; top: 9%; width: 48%; height: 58%; }
+.desktop .w2 { right: 6%; top: 18%; width: 34%; height: 44%; }
+.desktop .dockimg { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 76%; max-width: none; }
+.feature-shot { background: var(--inner); border-radius: 16px; margin: 8px 8px 0; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; aspect-ratio: 16 / 6.5;
+  background: linear-gradient(160deg, #7aa7e6, #a98be0); }
+:root[data-theme="dark"] .feature-shot { background: linear-gradient(160deg, #24427c, #4a2f7c); }
+.feature-shot img { width: 96%; }
+.menu-shot { border-radius: 18px; overflow: hidden; border: 1px solid var(--border); }
+@media (max-width: 560px) { .desktop { aspect-ratio: 4 / 3; } .desktop .w2 { display: none; } .desktop .w1 { width: 80%; } .desktop .dockimg { width: 120%; } }
+</style>
+</head>
+<body>
+
+<div class="banner"><a href="#download">✦ New: Beanotch Dock 0.1, the Mac dock for Windows 10 and 11. <i data-lucide="arrow-right"></i></a></div>
+
+<nav>
+  <div class="bar">
+    <a class="brand" href="#"><img src="assets/icon.png" alt="">Beanotch Dock</a>
+    <div class="nav-links">
+      <a href="#features">Features</a><a href="#details">Details</a><a href="#menu">Menu</a><a href="#faq">FAQ</a><a href="#download">Download</a>
+    </div>
+    <div class="nav-right">
+      <a class="icon-btn" href="https://github.com/giankbr/beanotch-dock" aria-label="Beanotch Dock on GitHub"><i data-lucide="github"></i></a>
+      <button class="icon-btn" id="themeBtn" aria-label="Switch light or dark"><i data-lucide="moon"></i></button>
+      <a class="btn btn-primary btn-sm win-dl" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-x64.exe"><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg>Download</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <a class="pill" href="https://github.com/giankbr/beanotch-dock"><b>FREE</b>Open source · Windows 10 &amp; 11 · x64 &amp; ARM <i data-lucide="arrow-right"></i></a>
+    <h1 id="headline">The Mac dock,<br>right on Windows.</h1>
+    <p class="lead">Icons that swell as your pointer glides past, a dot under every app that's open, a bounce as one starts, and Downloads and the Recycle Bin at the end. Windows' own taskbar steps aside while it runs.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary win-dl" id="heroDownload" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-x64.exe"><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg><span>Download for Windows</span></a>
+      <a class="btn btn-ghost" href="https://github.com/giankbr/beanotch-dock"><i data-lucide="github"></i>View on GitHub</a>
+    </div>
+    <div class="meta">
+      <span><i data-lucide="code"></i>C# + WinUI 3</span>
+      <span><i data-lucide="cpu"></i>x64 &amp; ARM</span>
+      <span><i data-lucide="undo-2"></i>Taskbar back on quit</span>
+      <span><i data-lucide="shield-check"></i>No tracking</span>
+    </div>
+  </div>
+  <div class="stage"><div class="hero-shot">
+    <div class="desktop">
+      <div class="win w1"><div class="tb">File Explorer<span><i>—</i><i>▢</i><i>✕</i></span></div><div class="body"><b style="width:60%"></b><b style="width:85%"></b><b style="width:72%"></b><b style="width:40%"></b><b style="width:78%"></b></div></div>
+      <div class="win w2"><div class="tb">Notepad<span><i>—</i><i>▢</i><i>✕</i></span></div><div class="body"><b style="width:90%"></b><b style="width:70%"></b><b style="width:82%"></b></div></div>
+      <img class="dockimg only-light" src="assets/dock-magnified-light.png" alt="Beanotch Dock along the bottom of a Windows desktop, one icon magnified under the pointer"><img class="dockimg only-dark" src="assets/dock-magnified-dark.png" alt="">
+    </div>
+  </div></div>
+  <div style="position:relative;max-width:1200px;margin:0 auto"><div class="hero-glow"></div></div>
+</header>
+
+<div class="stats">
+  <div class="wrap">
+    <div class="stat"><strong data-size="win">20 MB</strong><span>Download, .NET included</span></div>
+    <div class="stat"><strong>1.7×</strong><span>Magnification</span></div>
+    <div class="stat"><strong>3</strong><span>Sizes</span></div>
+    <div class="stat"><strong>0</strong><span>Accounts or trackers</span></div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <div class="center">
+      <span class="eyebrow">The dock</span>
+      <h2>Everything you reach for,<em>along the bottom.</em></h2>
+      <p class="sub">Your pinned apps and the ones you have open, side by side, the way a Mac keeps them.</p>
+    </div>
+    <div class="grid-2 panels">
+      <article class="card panel-card"><div class="feature-shot"><img class=" only-light" src="assets/dock-magnified-light.png" alt="The dock with an icon magnified"><img class=" only-dark" src="assets/dock-magnified-dark.png" alt=""></div><div class="txt"><h3>Magnification</h3><p>Icons grow smoothly as the pointer nears and settle back as it leaves. A label shows the app's name above it.</p></div></article>
+      <article class="card panel-card"><div class="feature-shot"><img class=" only-light" src="assets/dock-rest-light.png" alt="The dock at rest"><img class=" only-dark" src="assets/dock-rest-dark.png" alt=""></div><div class="txt"><h3>At rest</h3><p>A glass bar, light or dark with Windows. A dot marks every app that's open, pinned or not.</p></div></article>
+    </div>
+  </div>
+</section>
+
+<section id="details">
+  <div class="wrap">
+    <div class="center">
+      <span class="eyebrow">Details</span>
+      <h2>Small things,<em>done the Mac way.</em></h2>
+      <p class="sub">Built natively with WinUI 3. Nothing to set up: it starts with the apps already pinned to your taskbar.</p>
+    </div>
+    <div class="grid-3" style="margin-top:64px">
+      <article class="feature"><div><h3><span><i data-lucide="pin"></i></span>Your pins, imported</h3><p>The apps on your taskbar become the dock's on first launch. Keep any open app in the dock from its menu.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="mouse-pointer-click"></i></span>Click to bring forward</h3><p>An open app comes to the front, restored if it was minimized. One that isn't open starts, with a bounce.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="trash-2"></i></span>Recycle Bin</h3><p>Full or empty at a glance. Drag files onto it to throw them away; right-click to empty it.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="download"></i></span>Downloads</h3><p>Your Downloads folder sits at the end of the dock, one click away.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="file-up"></i></span>Drop files on apps</h3><p>Drag a file onto an app's icon and it opens there.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="eye-off"></i></span>Auto-hide</h3><p>Tuck the dock away until the pointer meets the bottom of the screen.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="panel-bottom"></i></span>The taskbar steps aside</h3><p>Windows' taskbar hides itself while the dock runs, and comes back exactly as it was when you quit or uninstall.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="layers"></i></span>Store apps, grouped right</h3><p>Terminal, Calculator and other Store apps show under their own names and icons.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="moon"></i></span>Light and dark</h3><p>The glass follows Windows' own light or dark mode.</p></div></article>
+    </div>
+  </div>
+</section>
+
+<section id="menu" style="border-top:1px solid var(--border)">
+  <div class="wrap">
+    <div class="head-row">
+      <div>
+        <span class="eyebrow">Right-click</span>
+        <h2>Settings live<em>in the dock.</em></h2>
+        <p class="sub">Right-click an empty part of the dock for magnification, auto-hide, the taskbar, Downloads, size and opening at sign-in. Right-click an app to keep it, remove it, find it in File Explorer or quit it.</p>
+      </div>
+    </div>
+    <div class="card menu-shot" style="margin-top:40px"><img src="assets/menu.png" alt="The dock's menu on a Windows desktop: Magnification, Automatically hide the Dock, Hide the Windows taskbar, Show Downloads, Size, Open at sign-in, Quit" loading="lazy"></div>
+  </div>
+</section>
+
+<section id="faq" style="border-top:1px solid var(--border)">
+  <div class="wrap faq">
+    <div>
+      <span class="eyebrow">FAQ</span>
+      <h2>Questions,<em>answered.</em></h2>
+      <p class="sub">Free and open source. If something isn't covered here, <a href="https://github.com/giankbr/beanotch-dock/issues" style="color:var(--accent)">open an issue on GitHub</a>.</p>
+    </div>
+    <div>
+      <details open><summary>Does it replace the Windows taskbar?<i data-lucide="chevron-down"></i></summary><p>It sits in its place. The taskbar is set to hide itself, so Start, the clock and the tray are still a nudge of the pointer to the bottom edge away. Turn "Hide the Windows taskbar" off in the dock's menu to keep both.</p></details>
+      <details><summary>How do I get my taskbar back?<i data-lucide="chevron-down"></i></summary><p>Quit the dock from its menu, or uninstall it. Either way the taskbar goes back to exactly how it was before.</p></details>
+      <details><summary>Why does Windows warn me when I install it?<i data-lucide="chevron-down"></i></summary><p>The installer isn't code-signed yet. In the SmartScreen dialog choose More info › Run anyway. It installs for your account only, with no admin prompt.</p></details>
+      <details><summary>Does it work with several screens?<i data-lucide="chevron-down"></i></summary><p>It lives on your main screen for now.</p></details>
+      <details><summary>Is it related to Beanotch?<i data-lucide="chevron-down"></i></summary><p>Yes, same maker. <a href="https://giankbr.github.io/beanie-notch" style="color:var(--accent)">Beanotch</a> puts a dashboard in the MacBook notch and a notch-style island on Windows. The two run happily together.</p></details>
+    </div>
+  </div>
+</section>
+
+<section id="download" style="padding-bottom:56px">
+  <div class="wrap">
+    <div class="center">
+      <span class="eyebrow">Get Beanotch Dock</span>
+      <h2>One download.<em>Free.</em></h2>
+      <p class="sub">Open source, no account, no tracking. Install takes under a minute.</p>
+    </div>
+    <article class="card get" style="margin-top:56px">
+      <div class="title"><b><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg>Windows</b><span class="beta">Beta</span></div>
+      <p class="meta-line"><span class="ver">v0.1.0</span> · Windows 10 and 11 · x64 &amp; Snapdragon (ARM) · <span data-size="win">20 MB</span>, .NET included</p>
+      <div class="cta-row" style="justify-content:flex-start">
+        <a class="btn btn-primary win-dl" id="winDownload" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-x64.exe"><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg><span>Download for Windows</span></a>
+        <a class="btn btn-ghost" id="winOther" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-arm64.exe"><i data-lucide="cpu"></i><span>ARM</span></a>
+      </div>
+      <div class="steps">
+        <div><span>1</span><strong>Run the installer</strong><p>Installs for you only, no admin prompt.</p></div>
+        <div><span>2</span><strong>SmartScreen</strong><p>Not signed yet: More info › Run anyway.</p></div>
+        <div><span>3</span><strong>That's it</strong><p>The dock appears along the bottom of your screen.</p></div>
+      </div>
+      <div class="term"><span>→</span><code>Snapdragon PC? Pick ARM. Every other PC uses the first button.</code></div>
+    </article>
+    <article class="card tip" id="support">
+      <div class="cup"><i data-lucide="coffee"></i></div>
+      <div>
+        <h3>Enjoying Beanotch Dock?</h3>
+        <p>It's free and made by one person. If it makes your PC feel a little more like home, a tip or a kind word keeps the beans roasting.</p>
+      </div>
+      <a class="btn btn-primary" href="https://yapp.ink/gian" target="_blank" rel="noopener"><i data-lucide="heart"></i>Send a tip</a>
+    </article>
+  </div>
+</section>
+
+<footer>
+  <div class="foot">
+    <div class="running">Running locally · no tracking</div>
+    <div class="foot-top">
+      <img src="assets/icon.png" alt="">
+      <div><h4>Beanotch Dock</h4><p>The Mac dock, right on Windows.</p></div>
+      <div class="cta-row">
+        <a class="btn btn-ghost" href="https://github.com/giankbr/beanotch-dock"><i data-lucide="github"></i>Star on GitHub</a>
+        <a class="btn btn-ghost" href="https://yapp.ink/gian" target="_blank" rel="noopener"><i data-lucide="coffee"></i>Tip the maker</a>
+        <a class="btn btn-primary win-dl" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-x64.exe"><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg>Download</a>
+      </div>
+    </div>
+    <div class="cols">
+      <div><h5>PRODUCT</h5><a href="#features">Features</a><a href="#details">Details</a><a href="#menu">Menu</a><a href="https://github.com/giankbr/beanotch-dock/releases">Releases</a></div>
+      <div><h5>PROJECT</h5><a href="https://github.com/giankbr/beanotch-dock">GitHub</a><a href="https://github.com/giankbr/beanotch-dock/releases">Changelog</a><a href="https://github.com/giankbr/beanotch-dock/issues">Report an issue</a><a href="https://giankbr.github.io/beanie-notch">Beanotch</a></div>
+      <div><h5>PRIVACY</h5><span>No tracking</span><span>No account</span><span>Nothing leaves your PC</span></div>
+      <div><h5>REQUIREMENTS</h5><span>Windows 10 or 11</span><span>x64 or ARM</span><span data-size="win">20 MB</span><span id="version">v0.1.0</span></div>
+    </div>
+    <div class="credits">
+      <div><span class="eyebrow">Credits</span><h4>Standing on open source.</h4><p>How the Windows shell works, learned from these projects. Beanotch Dock's code is written from scratch.</p></div>
+      <div class="chips" id="chips"></div>
+      <div class="font-note"><i data-lucide="type"></i>Be Vietnam Pro · SIL Open Font License</div>
+    </div>
+    <div class="bottom"><span>© 2026 Beanotch</span><span>Made with C# · no analytics</span></div>
+  </div>
+  <div class="watermark" aria-hidden="true"><span>D</span><span>O</span><span>C</span><span>K</span></div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  function store(key, value) { try { if (value === undefined) return localStorage.getItem(key); localStorage.setItem(key, value); } catch (e) { return null; } }
+
+  // Credits
+  var projects = [["ManagedShell","cairoshell/ManagedShell"],["Cairo Desktop","cairoshell/cairoshell"],["RetroBar","dremin/RetroBar"],["Seelen UI","eythaann/Seelen-UI"]];
+  document.getElementById("chips").innerHTML = projects.map(function (p) {
+    return '<a href="https://github.com/' + p[1] + '"><i data-lucide="github"></i>' + p[0] + '</a>';
+  }).join("");
+
+  function setTheme(mode, save) {
+    root.setAttribute("data-theme", mode);
+    var btn = document.getElementById("themeBtn");
+    btn.innerHTML = '<i data-lucide="' + (mode === "dark" ? "sun" : "moon") + '"></i>';
+    if (window.lucide) lucide.createIcons();
+    if (save) store("theme", mode);
+  }
+  var saved = store("theme");
+  var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  setTheme(dark ? "dark" : "light", false);
+  document.getElementById("themeBtn").addEventListener("click", function () {
+    setTheme(root.getAttribute("data-theme") === "dark" ? "light" : "dark", true);
+  });
+
+  // The newest release's version, when GitHub answers (the repository has to be public).
+  fetch("https://api.github.com/repos/giankbr/beanotch-dock/releases/latest").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (j && j.tag_name) { document.getElementById("version").textContent = j.tag_name; document.querySelectorAll(".ver").forEach(function (v) { v.textContent = j.tag_name; }); }
+    // And its download sizes, so the page never quotes an old build.
+    var sizes = {};
+    (j && j.assets || []).forEach(function (a) {
+      if (a.name === "BeanotchDock-Setup-x64.exe") sizes.win = a.size;
+    });
+    document.querySelectorAll("[data-size]").forEach(function (el) {
+      var bytes = sizes[el.dataset.size];
+      if (bytes) el.textContent = (bytes / 1048576).toFixed(bytes < 10485760 ? 1 : 0) + " MB";
+    });
+  }).catch(function () {});
+
+
+  // Headline words rise in one after another.
+  var h = document.getElementById("headline");
+  var i = 0;
+  h.innerHTML = h.innerHTML.split("<br>").map(function (line) {
+    return line.split(" ").map(function (w) { return '<span class="w" style="--i:' + (i++) + '">' + w + '</span>'; }).join(" ");
+  }).join("<br>");
+
+  var still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Reveal as things scroll into view; siblings in a grid come in a beat apart.
+  var targets = document.querySelectorAll("section h2, section .eyebrow, section .sub, .card, .feature, .stat, .gestures, details, .foot");
+  targets.forEach(function (el) {
+    el.classList.add("reveal");
+    var siblings = el.parentElement ? Array.prototype.indexOf.call(el.parentElement.children, el) : 0;
+    if (el.matches(".card, .feature, .stat")) el.style.setProperty("--d", (Math.min(siblings, 6) * 0.07) + "s");
+  });
+  if (still || !("IntersectionObserver" in window)) {
+    targets.forEach(function (el) { el.classList.add("in"); });
+  } else {
+    var seen = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        e.target.classList.add("in");
+        if (e.target.classList.contains("stat")) count(e.target.querySelector("strong"));
+        seen.unobserve(e.target);
+      });
+    }, { rootMargin: "0px 0px -10% 0px", threshold: 0.12 });
+    targets.forEach(function (el) { seen.observe(el); });
+  }
+
+  // Figures count up to their value the first time they show.
+  function count(el) {
+    var text = el.textContent, m = text.match(/[\d.]+/);
+    if (!m || still) return;
+    var target = parseFloat(m[0]), decimals = (m[0].split(".")[1] || "").length, start = performance.now();
+    (function step(t) {
+      var k = Math.min(1, (t - start) / 1100), eased = 1 - Math.pow(1 - k, 3);
+      el.textContent = text.replace(m[0], (target * eased).toFixed(decimals));
+      if (k < 1) requestAnimationFrame(step);
+    })(start);
+  }
+
+  // Parallax: the hero screenshot flattens out of its tilt, the glow and the watermark drift slower than the page.
+  var shot = document.querySelector(".hero-shot"), shotImg = shot.querySelector("img"), heroEl = document.querySelector(".hero");
+  var wm = document.querySelector(".watermark"), navEl = document.querySelector("nav"), ticking = false;
+  function frame() {
+    ticking = false;
+    var y = window.scrollY, vh = window.innerHeight;
+    navEl.classList.toggle("scrolled", y > 8);
+    if (still) return;
+    var p = Math.min(1, Math.max(0, y / (vh * 0.6)));
+    shot.style.setProperty("--tilt", (18 * (1 - p)).toFixed(2) + "deg");
+    shot.style.setProperty("--zoom", (0.92 + 0.08 * p).toFixed(3));
+    shotImg.style.setProperty("--shift", (-24 * p).toFixed(1) + "px");
+    heroEl.style.setProperty("--glow", (y * 0.35).toFixed(1) + "px");
+    var r = wm.getBoundingClientRect();
+    wm.style.setProperty("--wm", ((r.top - vh) * -0.18).toFixed(1) + "px");
+  }
+
+  // Watermark: rise in when it scrolls into view; the spotlight follows the pointer across the letters.
+  var letters = wm.querySelectorAll("span");
+  if (!still && "IntersectionObserver" in window) {
+    wm.classList.add("idle");
+    new IntersectionObserver(function (entries, o) {
+      if (entries[0].isIntersecting) { wm.classList.remove("idle"); o.disconnect(); }
+    }, { threshold: 0.25 }).observe(wm);
+  }
+  wm.addEventListener("pointermove", function (e) {
+    letters.forEach(function (l) {
+      var r = l.getBoundingClientRect();
+      l.style.setProperty("--mx", (e.clientX - r.left) + "px");
+      l.style.setProperty("--my", (e.clientY - r.top) + "px");
+    });
+  });
+  wm.addEventListener("pointerleave", function () {
+    letters.forEach(function (l) { l.style.removeProperty("--mx"); l.style.removeProperty("--my"); });
+  });
+  window.addEventListener("scroll", function () { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }, { passive: true });
+  frame();
+
+  if (window.lucide) lucide.createIcons();
+})();
+
+// Smooth, eased wheel scrolling; anchor links glide to their section below the sticky nav.
+(function () {
+  if (!window.Lenis || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var lenis = new Lenis({ duration: 1.15, easing: function (t) { return Math.min(1, 1.001 - Math.pow(2, -10 * t)); } });
+  function raf(time) { lenis.raf(time); requestAnimationFrame(raf); }
+  requestAnimationFrame(raf);
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest('a[href^="#"]');
+    if (!a) return;
+    var id = a.getAttribute("href"), target = id === "#" ? 0 : document.querySelector(id);
+    if (target === null) return;
+    e.preventDefault();
+    var nav = document.querySelector("nav");
+    lenis.scrollTo(target, { offset: target === 0 ? 0 : -((nav ? nav.offsetHeight : 0) + 12) });
+    if (id !== "#") history.replaceState(null, "", id);
+  });
+})();
+
+// On a Snapdragon PC the two Windows buttons swap, so the main one is the ARM64 build (Chromium reports the architecture).
+(function () {
+  var data = navigator.userAgentData;
+  if (!data || !data.getHighEntropyValues) return;
+  data.getHighEntropyValues(["architecture", "platform"]).then(function (v) {
+    if (v.platform !== "Windows" || v.architecture !== "arm") return;
+    var main = document.getElementById("winDownload"), other = document.getElementById("winOther");
+    main.href = main.href.replace("-x64.exe", "-arm64.exe");
+    main.querySelector("span").textContent = "Download for Windows on ARM";
+    var hero = document.getElementById("heroDownload");
+    if (hero) hero.querySelector("span").textContent = "Download for Windows on ARM";
+    other.href = other.href.replace("-arm64.exe", "-x64.exe");
+    other.querySelector("span").textContent = "x64";
+    document.querySelectorAll(".win-dl").forEach(function (a) { a.href = a.href.replace("-x64.exe", "-arm64.exe"); });
+  }).catch(function () {});
+})();
+
+// The nav lights the section in view.
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll(".nav-links a"));
+  var sections = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
+  if (!("IntersectionObserver" in window)) return;
+  var shown = new Map();
+  var watch = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { shown.set(e.target, e.isIntersecting ? e.intersectionRect.height : 0); });
+    var best = null, most = 0;
+    sections.forEach(function (sec, i) { var h = shown.get(sec) || 0; if (h > most) { most = h; best = i; } });
+    links.forEach(function (a, i) { a.classList.toggle("on", i === best); });
+  }, { threshold: [0, .1, .25, .5, .75, 1], rootMargin: "-80px 0px -35% 0px" });
+  sections.forEach(function (sec) { if (sec) watch.observe(sec); });
+})();
+
+</script>
+
+</body>
+</html>
