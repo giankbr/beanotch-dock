@@ -1,5 +1,5 @@
-# Photographs the dock on the build machine for the website: a full-HD desktop with no icons on it, a couple of real
-# app windows open (so the dock shows open apps), once in Windows' light look and once in its dark one.
+# Photographs the dock on the build machine for the website: a full-HD desktop with no icons on it and a File
+# Explorer window open (so the dock shows an open app), once in Windows' light look and once in its dark one.
 param([string]$Out, [string]$Exe)
 
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
@@ -57,17 +57,11 @@ foreach ($look in "light", "dark") {
   Look ($look -eq "dark")
   (New-Object -ComObject Shell.Application).MinimizeAll()
   Start-Sleep -Seconds 2
-  # Two real windows, placed like someone's at work.
-  $notes = Join-Path $env:RUNNER_TEMP "Ideas.txt"
-  "Beanotch Dock`r`n`r`n- Pin the apps I use every day`r`n- Try the dock on the left edge`r`n- Drop old installers on the Recycle Bin" | Out-File $notes -Encoding utf8
-  $notepad = Start-Process notepad.exe $notes -PassThru
+  # A real window open, placed like someone's at work (so the dock shows an open app).
   Start-Process explorer.exe $env:USERPROFILE
   Start-Sleep -Seconds 4
   $explorer = [Desk]::FindWindow("CabinetWClass", $null)
-  if ($explorer -ne [IntPtr]::Zero) { [Desk]::ShowWindow($explorer, 9) | Out-Null; [Desk]::MoveWindow($explorer, 230, 150, 900, 580, $true) | Out-Null }
-  # The Store Notepad's window belongs to another process than the one started, so it's found by its class.
-  $pad = [Desk]::FindWindow("Notepad", $null)
-  if ($pad -ne [IntPtr]::Zero) { [Desk]::ShowWindow($pad, 9) | Out-Null; [Desk]::MoveWindow($pad, 1060, 300, 620, 440, $true) | Out-Null }
+  if ($explorer -ne [IntPtr]::Zero) { [Desk]::ShowWindow($explorer, 9) | Out-Null; [Desk]::MoveWindow($explorer, 380, 130, 1160, 660, $true) | Out-Null }
   Start-Sleep -Seconds 2
 
   $dir = Join-Path $Out $look
@@ -82,7 +76,6 @@ foreach ($look in "light", "dark") {
   }
   if (-not $app.WaitForExit(60000)) { Stop-Process $app -Force; "timed out" | Out-File (Join-Path $dir "timeout.txt") }
   "exit code: $($app.ExitCode)" | Out-File (Join-Path $dir "exit.txt")
-  Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
   if ($explorer -ne [IntPtr]::Zero) { [Desk]::ShowWindow($explorer, 0) | Out-Null }
   Get-Process explorer -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle } | ForEach-Object { $_.CloseMainWindow() | Out-Null }
 }
