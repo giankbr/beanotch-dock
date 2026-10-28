@@ -165,7 +165,7 @@ static partial class Native
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool CloseHandle(nint handle);
 
-    [LibraryImport("kernel32.dll")]
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16)]
     private static partial int GetApplicationUserModelId(nint process, ref uint length, [Out] char[] id);
 
     // A packaged (Store) process's AppUserModelID; null for ordinary programs.
