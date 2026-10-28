@@ -549,7 +549,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
 </head>
 <body>
 
-<div class="banner"><a href="#download">✦ New: Beanotch Dock 0.1, the Mac dock for Windows 10 and 11. <i data-lucide="arrow-right"></i></a></div>
+<div class="banner"><a href="#download">✦ New in 0.5: drag to reorder, Downloads as a stack, recent apps, and apps that bounce for attention. <i data-lucide="arrow-right"></i></a></div>
 
 <nav>
   <div class="bar">
@@ -622,15 +622,18 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
       <p class="sub">Built natively with WinUI 3. Nothing to set up: it starts with the apps already pinned to your taskbar.</p>
     </div>
     <div class="grid-3" style="margin-top:64px">
-      <article class="feature"><div><h3><span><i data-lucide="pin"></i></span>Your pins, imported</h3><p>The apps on your taskbar become the dock's on first launch. Keep any open app in the dock from its menu.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="pin"></i></span>Your pins, imported</h3><p>The apps on your taskbar become the dock's on first launch. Keep any open app from its menu › Options.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="move"></i></span>Drag to reorder</h3><p>Drag icons along the dock to put them in order, or pull one off the dock and let go to take it out.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="layers"></i></span>Stacks</h3><p>Downloads opens as a stack of its newest files above the dock, or as the folder if you'd rather.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="history"></i></span>Recent apps</h3><p>The last few apps you closed sit after a divider, a click away, as on the Mac.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="bell-ring"></i></span>Bounces for attention</h3><p>When an app wants you (a new message, a finished download), its icon bounces until you look.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="mouse-pointer-click"></i></span>Click to bring forward</h3><p>An open app comes to the front, restored if it was minimized. One that isn't open starts, with a bounce.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="trash-2"></i></span>Recycle Bin</h3><p>Full or empty at a glance. Drag files onto it to throw them away; right-click to empty it.</p></div></article>
-      <article class="feature"><div><h3><span><i data-lucide="download"></i></span>Downloads</h3><p>Your Downloads folder sits at the end of the dock, one click away.</p></div></article>
-      <article class="feature"><div><h3><span><i data-lucide="file-up"></i></span>Drop files on apps</h3><p>Drag a file onto an app's icon and it opens there.</p></div></article>
-      <article class="feature"><div><h3><span><i data-lucide="eye-off"></i></span>Auto-hide</h3><p>Tuck the dock away until the pointer meets its edge of the screen, and choose how long it waits.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="layout-grid"></i></span>Start, right there</h3><p>Windows' Start sits at the head of the dock, since the taskbar is tucked away.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="eye-off"></i></span>Auto-hide, Ctrl+Alt+D</h3><p>Tuck the dock away until the pointer meets its edge, or flip it with Ctrl+Alt+D, as ⌥⌘D on the Mac.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="panel-bottom"></i></span>The taskbar steps aside</h3><p>Windows' taskbar hides itself while the dock runs, and comes back exactly as it was when you quit or uninstall.</p></div></article>
-      <article class="feature"><div><h3><span><i data-lucide="layers"></i></span>Store apps, grouped right</h3><p>Terminal, Calculator and other Store apps show under their own names and icons.</p></div></article>
-      <article class="feature"><div><h3><span><i data-lucide="moon"></i></span>Light and dark</h3><p>The glass follows Windows' own light or dark mode.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="refresh-cw"></i></span>Updates itself</h3><p>New versions install on their own; the dock is back a few seconds later.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="moon"></i></span>Light and dark</h3><p>The glass follows Windows' own light or dark mode, or the one you pick.</p></div></article>
     </div>
   </div>
 </section>
@@ -655,7 +658,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
       <div>
         <span class="eyebrow">Right-click</span>
         <h2>Settings live<em>in the dock.</em></h2>
-        <p class="sub">Right-click an empty part of the dock for magnification, auto-hide, which edge it sits on, and Dock Settings for everything else. Right-click an app to keep it, remove it, find it in File Explorer or quit it.</p>
+        <p class="sub">Right-click an empty part of the dock to turn hiding and magnification on or off, pick its edge, or open Dock Settings. Right-click an app for Options (Keep in Dock, Open at Login, Show in File Explorer), Hide and Quit.</p>
       </div>
     </div>
     <div class="card menu-shot" style="margin-top:40px"><img class="only-light" src="assets/menu-light.jpg" alt="The dock's menu on a Windows desktop: Magnification, Automatically hide the Dock, Hide the Windows taskbar, Show Downloads, Size, Open at sign-in, Quit" loading="lazy"><img class="only-dark" src="assets/menu-dark.jpg" alt="" loading="lazy"></div>
@@ -688,7 +691,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
     </div>
     <article class="card get" style="margin-top:56px">
       <div class="title"><b><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg>Windows</b><span class="beta">Beta</span></div>
-      <p class="meta-line"><span class="ver">v0.4.0</span> · Windows 10 and 11 · x64 &amp; Snapdragon (ARM) · <span data-size="win">20 MB</span>, .NET included</p>
+      <p class="meta-line"><span class="ver">v0.5.0</span> · Windows 10 and 11 · x64 &amp; Snapdragon (ARM) · <span data-size="win">20 MB</span>, .NET included</p>
       <div class="cta-row" style="justify-content:flex-start">
         <a class="btn btn-primary win-dl" id="winDownload" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-x64.exe"><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg><span>Download for Windows</span></a>
         <a class="btn btn-ghost" id="winOther" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-arm64.exe"><i data-lucide="cpu"></i><span>ARM</span></a>
@@ -727,7 +730,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
       <div><h5>PRODUCT</h5><a href="#features">Features</a><a href="#details">Details</a><a href="#settings">Settings</a><a href="https://github.com/giankbr/beanotch-dock/releases">Releases</a></div>
       <div><h5>PROJECT</h5><a href="https://github.com/giankbr/beanotch-dock">GitHub</a><a href="https://github.com/giankbr/beanotch-dock/releases">Changelog</a><a href="https://github.com/giankbr/beanotch-dock/issues">Report an issue</a><a href="https://giankbr.github.io/beanie-notch">Beanotch</a></div>
       <div><h5>PRIVACY</h5><span>No tracking</span><span>No account</span><span>Nothing leaves your PC</span></div>
-      <div><h5>REQUIREMENTS</h5><span>Windows 10 or 11</span><span>x64 or ARM</span><span data-size="win">20 MB</span><span id="version">v0.4.0</span></div>
+      <div><h5>REQUIREMENTS</h5><span>Windows 10 or 11</span><span>x64 or ARM</span><span data-size="win">20 MB</span><span id="version">v0.5.0</span></div>
     </div>
     <div class="credits">
       <div><span class="eyebrow">Credits</span><h4>Standing on open source.</h4><p>How the Windows shell works, learned from these projects. Beanotch Dock's code is written from scratch.</p></div>
