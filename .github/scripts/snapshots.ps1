@@ -32,6 +32,9 @@ public static class Desk {
 "@
 
 function Shot($path) {
+  # The runner's paging-file notice turns up whenever it likes; out of the picture.
+  $notice = [Desk]::FindWindow($null, "System Properties")
+  if ($notice -ne [IntPtr]::Zero) { [Desk]::ShowWindow($notice, 0) | Out-Null; Start-Sleep -Milliseconds 300 }
   $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
   $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
   [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)

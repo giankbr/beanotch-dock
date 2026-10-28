@@ -510,7 +510,8 @@ public sealed partial class DockWindow : Window
     {
         var files = Shell.NewestDownloads(12);
         var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, MaximumRowsOrColumns = 4, ItemWidth = 96, ItemHeight = 104 };
-        var flyout = new Flyout();
+        // In its own window: the dock's is cut to the bar's shape and would hide most of it.
+        var flyout = new Flyout { ShouldConstrainToRootBounds = false };
         foreach (var file in files)
         {
             var tile = new StackPanel { Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center };
