@@ -526,8 +526,12 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
 .desktop .win .body b { display: block; height: 10px; border-radius: 5px; background: var(--surface-2); }
 .desktop .w1 { left: 7%; top: 9%; width: 48%; height: 58%; }
 .desktop .w2 { right: 6%; top: 18%; width: 34%; height: 44%; }
-.desktop.real { aspect-ratio: auto; background: none; }
-.desktop.real img { width: 100%; }
+/* The hero: a bare Windows 11 desktop with the dock, rendered sharp, set on it; no frame around it. */
+.hero-shot { background: none !important; padding: 0 !important; }
+.desktop.real { aspect-ratio: 16 / 9; background: #0b1e4a; }
+.desktop.real .wall { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: none !important; }
+.desktop.real .dock { left: 50%; right: auto; width: 68%; bottom: 2.2%; transform: translateX(-50%); }
+.desktop.real .dock img { width: 100%; transform: none !important; }
 .desktop .dock { position: absolute; left: 12%; right: 12%; bottom: 0; }
 .desktop .dock img { width: 100%; }
 .feature-shot { background: var(--inner); border-radius: 16px; margin: 8px 8px 0; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; aspect-ratio: 16 / 6.5;
@@ -539,7 +543,8 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
 .settings-shot { aspect-ratio: 4 / 3.4 !important; align-items: flex-start !important; background: #1b5fd6 !important; }
 .settings-shot img.only-light, .settings-shot img.only-dark { height: 100%; }
 .settings-shot img { width: 100% !important; height: 100%; object-fit: cover; object-position: top left; }
-@media (max-width: 560px) { .desktop { aspect-ratio: 4 / 3; } .desktop .w2 { display: none; } .desktop .w1 { width: 80%; } .desktop .dock { left: -10%; right: -10%; } }
+@media (max-width: 560px) { .desktop { aspect-ratio: 4 / 3; } .desktop .w2 { display: none; } .desktop .w1 { width: 80%; } .desktop .dock { left: -10%; right: -10%; }
+  .desktop.real .dock { width: 96%; } }
 </style>
 </head>
 <body>
@@ -578,8 +583,9 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
   </div>
   <div class="stage"><div class="hero-shot">
     <div class="desktop real">
-      <img class="only-light" src="assets/desktop-light.jpg" alt="Beanotch Dock along the bottom of a Windows 11 desktop, Firefox magnified under the pointer, with File Explorer open">
-      <img class="only-dark" src="assets/desktop-dark.jpg" alt="">
+      <img class="wall only-light" src="assets/wall-light.jpg" alt="Beanotch Dock on a Windows 11 desktop, Firefox magnified under the pointer">
+      <img class="wall only-dark" src="assets/wall-dark.jpg" alt="">
+      <div class="dock"><img class="only-light" src="assets/dock-magnified-light.png" alt=""><img class="only-dark" src="assets/dock-magnified-dark.png" alt=""></div>
     </div>
   </div></div>
   <div style="position:relative;max-width:1200px;margin:0 auto"><div class="hero-glow"></div></div>

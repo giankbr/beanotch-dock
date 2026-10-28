@@ -209,6 +209,7 @@ public sealed partial class DockWindow : Window
             item.Label = pin.Name;
             next.Add(item);
         }
+        var open = new HashSet<DockItem>();
         foreach (var group in windows.GroupBy(w => w.Key))
         {
             var item = next.FirstOrDefault(i => i.Key == group.Key) ?? next.FirstOrDefault(i => i.Pin is { } pin && Shell.Matches(pin, group.First()));
@@ -220,11 +221,12 @@ public sealed partial class DockWindow : Window
                 item.Label = group.First().AppName;
                 next.Add(item);
             }
-            item.Windows.Clear();
+            // A kept app can gather more than one group (a shortcut matched by program, and its own ID).
+            if (open.Add(item)) item.Windows.Clear();
             item.Windows.AddRange(group.Select(w => w.Handle));
             item.Source ??= group.First();
         }
-        foreach (var item in next.Where(i => !windows.Any(w => w.Key == i.Key))) item.Windows.Clear();
+        foreach (var item in next.Where(i => !open.Contains(i))) item.Windows.Clear();
         foreach (var item in next) item.Active = item.Windows.Contains(foreground);
 
         if (settings.Separator && (settings.Downloads || settings.Trash)) next.Add(separator);

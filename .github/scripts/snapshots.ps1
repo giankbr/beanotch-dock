@@ -57,10 +57,11 @@ foreach ($look in "light", "dark") {
   Look ($look -eq "dark")
   (New-Object -ComObject Shell.Application).MinimizeAll()
   Start-Sleep -Seconds 2
-  # The bare desktop first: the website sets the dock on it.
   $dir = Join-Path $Out $look
   New-Item -ItemType Directory -Force $dir | Out-Null
-  Shot (Join-Path $dir "wall.png")
+  # The wallpaper itself, which the website sets the dock on: free of the runner's dialogs and its "Test Mode" mark.
+  $paper = if ($look -eq "dark") { "C:\Windows\Web\Wallpaper\Windows\img19.jpg" } else { "C:\Windows\Web\Wallpaper\Windows\img0.jpg" }
+  if (Test-Path $paper) { Copy-Item $paper (Join-Path $dir "wall.jpg") }
   # A real window open, placed like someone's at work (so the dock shows an open app).
   Start-Process explorer.exe $env:USERPROFILE
   Start-Sleep -Seconds 4
