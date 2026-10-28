@@ -48,6 +48,47 @@ static partial class Native
         SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0020 | 0x0002 | 0x0001 | 0x0004 | 0x0010);
     }
 
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool RegisterShellHookWindow(nint hwnd);
+
+    [LibraryImport("user32.dll", EntryPoint = "RegisterWindowMessageW", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial uint RegisterWindowMessage(string name);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool RegisterHotKey(nint hwnd, int id, uint modifiers, uint key);
+
+    [LibraryImport("comctl32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static unsafe partial bool SetWindowSubclass(nint hwnd, delegate* unmanaged[Stdcall]<nint, uint, nint, nint, nuint, nuint, nint> proc, nuint id, nuint data);
+
+    [LibraryImport("comctl32.dll")]
+    private static partial nint DefSubclassProc(nint hwnd, uint message, nint wParam, nint lParam);
+
+    private static uint shellHook;
+    // A window flashing for attention (HSHELL_FLASH), and the dock's hide-and-show shortcut pressed.
+    internal static Action<nint>? Flashed;
+    internal static Action? HotkeyPressed;
+
+    // Hears the shell's window events and the dock's shortcut, Ctrl+Alt+D (⌥⌘D on the Mac): the way an app asks for
+    // attention on the taskbar is how it asks the dock.
+    internal static void Listen(nint hwnd)
+    {
+        shellHook = RegisterWindowMessage("SHELLHOOK");
+        RegisterShellHookWindow(hwnd);
+        RegisterHotKey(hwnd, 1, 0x0002 | 0x0001 | 0x4000, 0x44); // MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, 'D'
+        unsafe { SetWindowSubclass(hwnd, &Messages, 9, 0); }
+    }
+
+    [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = [typeof(System.Runtime.CompilerServices.CallConvStdcall)])]
+    private static nint Messages(nint hwnd, uint message, nint wParam, nint lParam, nuint id, nuint data)
+    {
+        if (message == shellHook && shellHook != 0 && (wParam & 0x7FFF) == 6 && (wParam & 0x8000) != 0) Flashed?.Invoke(lParam); // HSHELL_FLASH
+        else if (message == 0x0312 && wParam == 1) HotkeyPressed?.Invoke(); // WM_HOTKEY
+        return DefSubclassProc(hwnd, message, wParam, lParam);
+    }
+
     [LibraryImport("gdi32.dll")]
     private static partial nint CreateRectRgn(int left, int top, int right, int bottom);
 

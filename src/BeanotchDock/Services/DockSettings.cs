@@ -51,6 +51,11 @@ public sealed class DockSettings
     // Windows' Start button at the head of the dock, since the taskbar that holds it is out of sight.
     public bool StartButton { get; set; } = true;
     public bool Downloads { get; set; } = true;
+    // As on the Mac: Downloads opens as a stack of its newest files, or as the folder.
+    public bool DownloadsStack { get; set; } = true;
+    // "Show suggested and recent apps in Dock": the last few apps you closed that aren't kept, after a divider.
+    public bool ShowRecent { get; set; } = true;
+    public List<Pin> Recent { get; set; } = [];
     public bool Trash { get; set; } = true;
     public bool Separator { get; set; } = true;
 
@@ -70,7 +75,8 @@ public sealed class DockSettings
             (d.IconSize, d.Magnify, d.Magnification, d.Edge, d.Theme, d.Opacity, d.Roundness, d.Spacing, d.Margin, d.Labels, d.Indicator);
         (AutoHide, HideDelay, Bounce, ShowRunning, ClickMinimizes, HideInFullscreen) =
             (d.AutoHide, d.HideDelay, d.Bounce, d.ShowRunning, d.ClickMinimizes, d.HideInFullscreen);
-        (StartButton, Downloads, Trash, Separator) = (d.StartButton, d.Downloads, d.Trash, d.Separator);
+        (StartButton, Downloads, Trash, Separator, DownloadsStack, ShowRecent) =
+            (d.StartButton, d.Downloads, d.Trash, d.Separator, d.DownloadsStack, d.ShowRecent);
     }
 
     public static string Folder => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BeanotchDock");

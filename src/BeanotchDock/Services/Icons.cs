@@ -83,6 +83,9 @@ static partial class Icons
             : item.Source?.Path,
     };
 
+    // Any file's or folder's icon, as Explorer draws it.
+    public static ImageSource? ForFile(string path) => Load(path);
+
     public static Task<ImageSource?> ForAsync(DockItem item)
     {
         if (item.Kind == ItemKind.Start) return Task.FromResult<ImageSource?>(StartLogo());

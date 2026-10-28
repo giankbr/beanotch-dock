@@ -210,8 +210,17 @@ public sealed class DockView
                     if (t > 6 || item.Running) item.LaunchedAt = null;
                     else if (Bounce) bounce = Math.Abs(Math.Sin(t * Math.PI * 1.6)) * s * 0.45;
                 }
+                // Wanting attention: higher hops, a beat apart, until it's looked at or for half a minute.
+                if (item.AttentionAt is { } asked)
+                {
+                    var t = (now - asked).TotalSeconds;
+                    if (t > 30 || item.Active) item.AttentionAt = null;
+                    else if (t % 1.6 < 0.8) bounce = Math.Max(bounce, Math.Sin(t % 1.6 / 0.8 * Math.PI) * s * 0.6);
+                }
                 var iconC = barC + Pad + 4 + bounce;
                 Put(face, At(m, iconC, w, w));
+                // Dragged off the dock, an icon fades: let go and it's taken out.
+                face.Opacity = item == Dragging && DragAway ? 0.35 : 1;
                 if (iconC + w > barC + BarThickness) shapes.Add(At(m, barC + BarThickness, w, iconC + w - barC - BarThickness));
                 // The running mark, between the icon and the screen's edge: a dot or a short line.
                 var markC = barC + (Pad + 4) / 2 - 1;
@@ -232,9 +241,10 @@ public sealed class DockView
             m += w + Gap;
         }
 
-        if (Labels && Hovered is { } hovered && Tucked < 0.5)
+        if (Dragging is { } dragged) Hovered = dragged;
+        if ((Labels || Dragging is not null) && Hovered is { } hovered && Tucked < 0.5)
         {
-            labelText.Text = hovered.Label;
+            labelText.Text = hovered == Dragging && DragAway ? "Remove" : hovered.Label;
             label.Visibility = Visibility.Visible;
             label.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             var size = label.DesiredSize;
@@ -256,7 +266,11 @@ public sealed class DockView
     }
 
     // Whether anything is still moving, so the window can stop drawing frames when the dock is at rest.
-    public bool Settled => items.All(i => i.LaunchedAt is null && (Pointer is not null || i.Scale == 1));
+    public bool Settled => items.All(i => i.LaunchedAt is null && i.AttentionAt is null && (Pointer is not null || i.Scale == 1));
+
+    // The icon being dragged to a new place, and whether it's been pulled off the dock.
+    public DockItem? Dragging { get; set; }
+    public bool DragAway { get; set; }
 
     public DockItem? ItemAt(double p) =>
         items.FirstOrDefault(i => i.Kind != ItemKind.Separator && p >= i.X - Gap / 2 && p < i.X + Size(i, i.Scale) + Gap / 2);

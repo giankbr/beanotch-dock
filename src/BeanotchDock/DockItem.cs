@@ -20,6 +20,10 @@ public sealed class DockItem
     public bool Active { get; set; }
     // A launch in progress: it bounces until a window shows up, or for a few seconds.
     public DateTimeOffset? LaunchedAt { get; set; }
+    // Asking for attention (a window flashing on the taskbar): it bounces, as on the Mac, until you look.
+    public DateTimeOffset? AttentionAt { get; set; }
+    // One of the apps used lately, shown after the kept and open ones.
+    public bool Recent { get; set; }
     // Where it sits along the dock, eased toward its target each frame.
     public double Scale { get; set; } = 1;
     public double X { get; set; }

@@ -147,6 +147,18 @@ static partial class Shell
 
     public static void OpenDownloads() => Native.Open(DownloadsFolder);
 
+    // The newest files and folders in Downloads, newest first.
+    public static List<string> NewestDownloads(int count)
+    {
+        try
+        {
+            return new DirectoryInfo(DownloadsFolder).EnumerateFileSystemInfos()
+                .Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden) && !f.Name.EndsWith(".crdownload") && !f.Name.EndsWith(".part"))
+                .OrderByDescending(f => f.LastWriteTimeUtc).Take(count).Select(f => f.FullName).ToList();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return []; }
+    }
+
     // MARK: Recycle Bin
 
     [StructLayout(LayoutKind.Sequential)]

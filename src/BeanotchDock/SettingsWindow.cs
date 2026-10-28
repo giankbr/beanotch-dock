@@ -82,12 +82,17 @@ public sealed partial class SettingsWindow : Window
             Row("Click the app in front to minimize it", "As on Windows. Off, as on the Mac: it stays",
                 Toggle(settings.ClickMinimizes, v => settings.ClickMinimizes = v)),
             Row("Hide when an app is full screen", "Games, videos and slideshows keep the screen to themselves",
-                Toggle(settings.HideInFullscreen, v => settings.HideInFullscreen = v)));
+                Toggle(settings.HideInFullscreen, v => settings.HideInFullscreen = v)),
+            Row("Show suggested and recent apps in Dock", "The last few apps you closed, after a divider",
+                Toggle(settings.ShowRecent, v => settings.ShowRecent = v)),
+            Row("Keyboard shortcut", "Ctrl+Alt+D turns hiding on and off, as ⌥⌘D does on the Mac", null));
 
         Section("Items");
         Card(
             Row("Start button", "Windows' Start, at the head of the dock", Toggle(settings.StartButton, v => settings.StartButton = v)),
             Row("Downloads", "Your Downloads folder, at the end", Toggle(settings.Downloads, v => settings.Downloads = v)),
+            settings.Downloads ? Row("Display Downloads as", "A stack of the newest files, or the folder itself",
+                ChooseText(["Stack", "Folder"], settings.DownloadsStack ? 0 : 1, i => settings.DownloadsStack = i == 0)) : null,
             Row("Recycle Bin", "At the very end; drop files on it to throw them away", Toggle(settings.Trash, v => settings.Trash = v)),
             Row("Divider", "The line before Downloads and the Recycle Bin", Toggle(settings.Separator, v => settings.Separator = v)));
         Pins();
@@ -155,7 +160,8 @@ public sealed partial class SettingsWindow : Window
             actions.Children.Add(Icon("", "Remove from Dock", true, () => settings.Pins.RemoveAt(index)));
             rows.Add(Row(pin.Name, pin.Path.Length > 0 ? pin.Path : pin.Aumid ?? "", actions));
         }
-        if (rows.Count == 0) rows.Add(Row("Nothing kept yet", "Right-click an open app in the Dock › Keep in Dock", null));
+        if (rows.Count == 0) rows.Add(Row("Nothing kept yet", "Right-click an open app in the Dock › Options › Keep in Dock", null));
+        rows.Insert(0, Row("Tip", "Drag icons along the Dock to reorder them, or off it to take them out", null));
         Section("Kept in the Dock");
         Card([.. rows]);
     }
@@ -243,6 +249,15 @@ public sealed partial class SettingsWindow : Window
         Grid.SetColumn(readout, 1);
         row.Children.Add(readout);
         return row;
+    }
+
+    private ComboBox ChooseText(string[] options, int selected, Action<int> set)
+    {
+        var box = new ComboBox { MinWidth = narrow ? 0 : 160 };
+        foreach (var o in options) box.Items.Add(o);
+        box.SelectedIndex = selected;
+        box.SelectionChanged += (_, _) => { if (box.SelectedIndex >= 0) { set(box.SelectedIndex); Changed(); } };
+        return box;
     }
 
     // A drop-down of an enum's values.

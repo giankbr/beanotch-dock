@@ -48,6 +48,12 @@ function Look($dark) {
 }
 
 "resolution: $([Desk]::Resolution(1920, 1080))"
+# A few downloads for the stack.
+$downloads = Join-Path $env:USERPROFILE "Downloads"
+New-Item -ItemType Directory -Force $downloads | Out-Null
+foreach ($name in "Invoice October.pdf", "Holiday photos.zip", "Setup.exe", "Notes.txt", "Design.png", "Report.docx") {
+  Set-Content (Join-Path $downloads $name) "x"
+}
 # No icons on the desktop, and Explorer restarted so it notices.
 Set-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" HideIcons 1
 Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
@@ -68,7 +74,7 @@ foreach ($look in "light", "dark") {
   $env:BEANOTCH_DOCK_SNAPSHOT = $dir
   $app = Start-Process $Exe -PassThru
   # The dock writes a marker as it reaches each state it wants photographed, and waits for the shot.
-  foreach ($state in "rest", "magnified", "menu", "settings", "narrow", "left") {
+  foreach ($state in "rest", "magnified", "menu", "stack", "settings", "narrow", "left") {
     $ready = Join-Path $dir "$state.ready"
     for ($i = 0; $i -lt 60 -and -not (Test-Path $ready); $i++) { Start-Sleep -Milliseconds 500 }
     if (Test-Path $ready) { Start-Sleep -Milliseconds 800; Shot (Join-Path $dir "$state.png"); New-Item -ItemType File (Join-Path $dir "$state.done") | Out-Null }

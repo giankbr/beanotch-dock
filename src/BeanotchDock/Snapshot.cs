@@ -40,6 +40,9 @@ public sealed partial class DockWindow
             // The Store apps are kept by their IDs; the programs only if this machine has them.
             settings.Pins = DemoApps.Where(a => a.Path.Length == 0 || File.Exists(a.Path))
                 .Select(a => new Pin { Name = a.Name, Path = a.Path, Aumid = a.Aumid }).ToList();
+            // Two apps used lately, for the recent section.
+            settings.Recent = [.. new[] { (@"C:\Windows\notepad.exe", "Notepad"), (@"C:\Windows\System32\mspaint.exe", "Paint") }
+                .Where(a => File.Exists(a.Item1)).Select(a => new Pin { Name = a.Item2, Path = a.Item1 })];
             Refresh();
             await Task.Delay(2500);
             await File.WriteAllTextAsync(Path.Combine(dir, "items.txt"), string.Join(Environment.NewLine,
@@ -57,6 +60,10 @@ public sealed partial class DockWindow
             Animate();
             ShowMenu(new Point(40, view.View.ActualHeight - 30));
             await Pose("menu");
+            // The Downloads stack, opened from its icon.
+            if (items.FirstOrDefault(i => i.Kind == ItemKind.Downloads) is { } stack)
+                ShowStack(settings.Edge == DockEdge.Bottom ? new Point(stack.X + 20, view.View.ActualHeight - 30) : new Point(30, stack.X + 20));
+            await Pose("stack");
             OpenSettings();
             // In front of everything and clear of File Explorer, for the photo.
             if (settingsWindow is { } shown)

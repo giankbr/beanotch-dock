@@ -31,6 +31,11 @@ public sealed partial class DockWindow : Window
     private readonly Tasks tasks;
     private List<DockItem> items = [];
     private readonly DockItem separator = new() { Kind = ItemKind.Separator, Key = "|" };
+    private readonly DockItem recentDivider = new() { Kind = ItemKind.Separator, Key = "|recent" };
+    // A press on an icon, which becomes a drag once the pointer moves a little.
+    private DockItem? pressed;
+    private Point pressedAt;
+    private bool dragging;
     private readonly DockItem downloads = new() { Kind = ItemKind.Downloads, Key = "downloads", Label = "Downloads" };
     private readonly DockItem trash = new() { Kind = ItemKind.Trash, Key = "trash", Label = "Recycle Bin" };
     private readonly DockItem start = new() { Kind = ItemKind.Start, Key = "start", Label = "Start" };
@@ -49,9 +54,10 @@ public sealed partial class DockWindow : Window
 
         root.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         root.Children.Add(view.View);
-        root.PointerMoved += (_, e) => Point(e);
+        root.PointerMoved += (_, e) => { Point(e); DragMove(e); };
         root.PointerEntered += (_, e) => Point(e);
-        root.PointerExited += (_, _) => { view.Pointer = null; pointerAway = DateTimeOffset.Now; Animate(); };
+        root.PointerExited += (_, _) => { if (pressed is null) { view.Pointer = null; pointerAway = DateTimeOffset.Now; Animate(); } };
+        root.PointerPressed += OnPress;
         root.PointerReleased += OnClick;
         root.RightTapped += OnRightTapped;
         root.AllowDrop = true;
@@ -68,6 +74,12 @@ public sealed partial class DockWindow : Window
         presenter.SetBorderAndTitleBar(false, false);
         AppWindow.SetPresenter(presenter);
         Native.Frameless(hwnd);
+        Native.Listen(hwnd);
+        Native.Flashed = window => ui.TryEnqueue(() =>
+        {
+            if (items.FirstOrDefault(i => i.Windows.Contains(window)) is { Active: false } asking) { asking.AttentionAt = DateTimeOffset.Now; Animate(); }
+        });
+        Native.HotkeyPressed = () => ui.TryEnqueue(() => { settings.AutoHide = !settings.AutoHide; Save(); });
         AppWindow.IsShownInSwitchers = false;
         AppWindow.Title = "Beanotch Dock";
         AppWindow.Closing += (_, _) => Quit();
@@ -237,6 +249,29 @@ public sealed partial class DockWindow : Window
         foreach (var item in next.Where(i => !open.Contains(i))) item.Windows.Clear();
         foreach (var item in next) item.Active = item.Windows.Contains(foreground);
 
+        // An open app that isn't kept, closed: it joins the recent ones (the newest three), as on the Mac.
+        foreach (var gone in items.Where(i => i.IsApp && !i.Recent && i.Pin is null && i.Source is not null && !next.Contains(i)))
+            if (Shell.PinFor(gone) is { } was && !settings.Pins.Any(p => Shell.KeyFor(p) == gone.Key))
+            {
+                settings.Recent.RemoveAll(r => Shell.KeyFor(r) == gone.Key);
+                settings.Recent.Insert(0, was);
+                if (settings.Recent.Count > 3) settings.Recent.RemoveRange(3, settings.Recent.Count - 3);
+                settings.Save();
+            }
+        if (settings.ShowRecent)
+        {
+            var recent = settings.Recent.Where(r => !next.Any(i => i.Key == Shell.KeyFor(r))).ToList();
+            if (recent.Count > 0) next.Add(recentDivider);
+            foreach (var pin in recent)
+            {
+                var item = Find("recent:" + Shell.KeyFor(pin));
+                item.Pin = pin;
+                item.Recent = true;
+                item.Label = pin.Name;
+                next.Add(item);
+            }
+        }
+
         if (settings.Separator && (settings.Downloads || settings.Trash)) next.Add(separator);
         if (settings.Downloads) next.Add(downloads);
         if (settings.Trash) next.Add(trash);
@@ -263,16 +298,80 @@ public sealed partial class DockWindow : Window
         Animate();
     }
 
+    private void OnPress(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(root);
+        if (!point.Properties.IsLeftButtonPressed) return;
+        pressed = view.ItemAt(Along(point.Position));
+        pressedAt = point.Position;
+        dragging = false;
+        if (pressed is not null) root.CapturePointer(e.Pointer);
+    }
+
+    // How far the pointer is from the screen's edge the dock sits on.
+    private double OutFromEdge(Point p) => settings.Edge switch
+    {
+        DockEdge.Left => p.X,
+        DockEdge.Right => view.View.ActualWidth - p.X,
+        _ => view.View.ActualHeight - p.Y,
+    };
+
+    // Dragging an app along the dock moves it among the kept ones; pulling it well off the dock takes it out.
+    private void DragMove(PointerRoutedEventArgs e)
+    {
+        if (pressed is not { IsApp: true, Recent: false } item) return;
+        var p = e.GetCurrentPoint(root).Position;
+        if (!dragging)
+        {
+            if (Math.Abs(p.X - pressedAt.X) + Math.Abs(p.Y - pressedAt.Y) < 8) return;
+            dragging = true;
+            if (item.Pin is null && Shell.PinFor(item) is { } pin) { settings.Pins.Add(pin); item.Pin = pin; }
+            view.Dragging = item;
+        }
+        view.DragAway = OutFromEdge(p) > settings.Margin + view.BarThickness + view.IconSize * 1.3;
+        if (!view.DragAway && item.Pin is { } kept)
+        {
+            // The place among the kept apps nearest the pointer.
+            var along = Along(p);
+            var others = items.Where(i => i.Pin is not null && !i.Recent && i.IsApp).ToList();
+            var target = others.Count(i => i != item && i.X + view.IconSize / 2 < along);
+            var now = settings.Pins.IndexOf(kept);
+            if (now >= 0 && target != now)
+            {
+                settings.Pins.RemoveAt(now);
+                settings.Pins.Insert(Math.Clamp(target, 0, settings.Pins.Count), kept);
+                Refresh();
+            }
+        }
+        Animate();
+    }
+
     private void OnClick(object sender, PointerRoutedEventArgs e)
     {
         var point = e.GetCurrentPoint(root);
+        root.ReleasePointerCaptures();
+        var wasDragging = dragging;
+        dragging = false;
+        pressed = null;
+        if (wasDragging)
+        {
+            if (view.Dragging is { } dropped && view.DragAway) Unpin(dropped);
+            view.Dragging = null;
+            view.DragAway = false;
+            settings.Save();
+            Refresh();
+            Animate();
+            return;
+        }
         if (point.Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonReleased) return;
         if (view.ItemAt(Along(point.Position)) is not { } item) return;
         switch (item.Kind)
         {
             case ItemKind.Trash: Shell.OpenTrash(); break;
             case ItemKind.Start: Shell.OpenStart(); break;
-            case ItemKind.Downloads: Shell.OpenDownloads(); break;
+            case ItemKind.Downloads:
+                if (settings.DownloadsStack) ShowStack(point.Position); else Shell.OpenDownloads();
+                break;
             default:
                 // As on the Mac: a running app comes to the front, with its most recent window; one that isn't opens.
                 if (item.Running && item.Active && settings.ClickMinimizes) Shell.Minimize(item.Windows);
@@ -310,10 +409,22 @@ public sealed partial class DockWindow : Window
                 foreach (var w in item.Windows.Take(8)) Add(Native.Title(w) is { Length: > 0 } t ? t : item.Label, () => Shell.Activate([w]));
                 menu.Items.Add(new MenuFlyoutSeparator());
             }
-            if (item.Running && item.Pin is null) Add("Keep in Dock", () => Pin(item));
-            if (item.Pin is not null) Add("Remove from Dock", () => Unpin(item));
-            if (item.Pin is { } pin || item.Source is not null) Add("Show in File Explorer", () => Shell.Reveal(item));
+            // Options, as on the Mac: keep it, open it at sign-in, find it.
+            var options = new MenuFlyoutSubItem { Text = "Options" };
+            void Option(string text, Action act, bool? isChecked = null)
+            {
+                MenuFlyoutItem entry = isChecked is { } on ? new ToggleMenuFlyoutItem { Text = text, IsChecked = on } : new MenuFlyoutItem { Text = text };
+                entry.Click += (_, _) => act();
+                options.Items.Add(entry);
+            }
+            var kept = item.Pin is not null && !item.Recent;
+            Option("Keep in Dock", () => { if (kept) Unpin(item); else Pin(item); }, kept);
+            if ((item.Pin ?? Shell.PinFor(item)) is { } launch) Option("Open at Login", () => Startup.SetFor(launch, !Startup.IsOn(launch)), Startup.IsOn(launch));
+            if (item.Pin is not null || item.Source is not null) Option("Show in File Explorer", () => Shell.Reveal(item));
+            menu.Items.Add(options);
+            menu.Items.Add(new MenuFlyoutSeparator());
             if (!item.Running && item.Pin is { } p) Add("Open", () => { if (Shell.Launch(p)) { item.LaunchedAt = DateTimeOffset.Now; Animate(); } });
+            if (item.Running) Add("Hide", () => Shell.Minimize(item.Windows));
             if (item.Running) Add("Quit", () => Shell.Close(item.Windows));
         }
         else if (item is { Kind: ItemKind.Trash })
@@ -323,7 +434,9 @@ public sealed partial class DockWindow : Window
         }
         else if (item is { Kind: ItemKind.Downloads })
         {
-            Add("Open Downloads", Shell.OpenDownloads);
+            Add("Open in File Explorer", Shell.OpenDownloads);
+            Add("Display as Stack", () => { settings.DownloadsStack = true; settings.Save(); }, true, settings.DownloadsStack);
+            Add("Display as Folder", () => { settings.DownloadsStack = false; settings.Save(); }, true, !settings.DownloadsStack);
         }
         else if (item is { Kind: ItemKind.Start })
         {
@@ -332,8 +445,8 @@ public sealed partial class DockWindow : Window
         }
         else
         {
-            Add("Magnification", () => { settings.Magnify = !settings.Magnify; Save(); }, true, settings.Magnify);
-            Add("Automatically hide the Dock", () => { settings.AutoHide = !settings.AutoHide; Save(); }, true, settings.AutoHide);
+            Add("Turn Magnification " + (settings.Magnify ? "Off" : "On"), () => { settings.Magnify = !settings.Magnify; Save(); });
+            Add("Turn Hiding " + (settings.AutoHide ? "Off" : "On") + "  (Ctrl+Alt+D)", () => { settings.AutoHide = !settings.AutoHide; Save(); });
             var position = new MenuFlyoutSubItem { Text = "Position on screen" };
             foreach (var edge in Enum.GetValues<DockEdge>())
             {
@@ -390,6 +503,35 @@ public sealed partial class DockWindow : Window
         settings.Pins.Add(pin);
         settings.Save();
         Refresh();
+    }
+
+    // Downloads as a stack: its newest files in a grid above the dock, as on the Mac.
+    private void ShowStack(Point at)
+    {
+        var files = Shell.NewestDownloads(12);
+        var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, MaximumRowsOrColumns = 4, ItemWidth = 96, ItemHeight = 104 };
+        var flyout = new Flyout();
+        foreach (var file in files)
+        {
+            var tile = new StackPanel { Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center };
+            tile.Children.Add(new Image { Width = 56, Height = 56, Source = Icons.ForFile(file) });
+            tile.Children.Add(new TextBlock { Text = System.IO.Path.GetFileName(file), FontSize = 11.5, TextAlignment = TextAlignment.Center,
+                                             TextTrimming = TextTrimming.CharacterEllipsis, MaxLines = 2, TextWrapping = TextWrapping.Wrap, Width = 88 });
+            var button = new Button { Content = tile, Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent), BorderThickness = new Thickness(0), Padding = new Thickness(4) };
+            button.Click += (_, _) => { flyout.Hide(); Native.Open(file); };
+            grid.Children.Add(button);
+        }
+        var panel = new StackPanel { Spacing = 10, Width = 400 };
+        panel.Children.Add(new TextBlock { Text = "Downloads", FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        if (files.Count == 0) panel.Children.Add(new TextBlock { Text = "Nothing downloaded yet", Opacity = 0.6 });
+        else panel.Children.Add(grid);
+        var open = new HyperlinkButton { Content = "Open in File Explorer" };
+        open.Click += (_, _) => { flyout.Hide(); Shell.OpenDownloads(); };
+        panel.Children.Add(open);
+        flyout.Content = panel;
+        menuOpen = true;
+        flyout.Closed += (_, _) => { menuOpen = false; pointerAway = DateTimeOffset.Now; Animate(); };
+        flyout.ShowAt(root, new Microsoft.UI.Xaml.Controls.Primitives.FlyoutShowOptions { Position = at });
     }
 
     private void Unpin(DockItem item)
