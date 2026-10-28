@@ -46,7 +46,7 @@ public sealed partial class DockWindow
             // The pointer over the fourth icon, as if reaching for it.
             var apps = items.Where(i => i.IsApp).ToList();
             var target = apps.Count > 3 ? apps[3] : apps.LastOrDefault();
-            view.Pointer = target is null ? view.View.ActualWidth / 2 : target.X + view.IconSize / 2;
+            view.Pointer = target is null ? view.View.ActualWidth / 2 : target.X + 20;
             Animate();
             await Pose("magnified");
             await Render(dir, "dock-magnified");
@@ -60,7 +60,7 @@ public sealed partial class DockWindow
             settings.Edge = DockEdge.Left;
             settings.Indicator = DockIndicator.Line;
             Apply();
-            view.Pointer = items.Count > 2 ? items[2].X + view.IconSize / 2 : null;
+            view.Pointer = items.Count > 2 ? items[2].X + 20 : null;
             Animate();
             await Pose("left");
         }

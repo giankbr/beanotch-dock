@@ -44,6 +44,8 @@ public sealed class Tasks(nint self)
     private TaskWindow? Describe(nint hwnd)
     {
         Native.GetWindowThreadProcessId(hwnd, out var pid);
+        // The dock's own windows (its settings) aren't apps in it.
+        if (pid == Environment.ProcessId) return null;
         if (!processes.TryGetValue(pid, out var process))
         {
             var path = Native.ProcessPath(pid);

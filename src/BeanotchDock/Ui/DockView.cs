@@ -44,9 +44,12 @@ public sealed class DockView
     public double Tucked { get; set; }
 
     private bool Side => Edge != DockEdge.Bottom;
-    public double Pad => Math.Round(IconSize * 0.14);
-    public double Gap => Math.Round(IconSize * Spacing);
-    public double BarThickness => IconSize + Pad * 2 + 4;
+    // The icon size in use: the chosen one, or smaller when that many icons wouldn't fit along the screen.
+    private double fit = double.MaxValue;
+    private double S => Math.Min(IconSize, fit);
+    public double Pad => Math.Round(S * 0.14);
+    public double Gap => Math.Round(S * Spacing);
+    public double BarThickness => S + Pad * 2 + 4;
     // How deep the window has to be: the bar, magnified icons above it, and the label beyond them.
     public double Thickness => Margin + BarThickness + IconSize * (Magnification - 1) + (Side ? 230 : 46);
 
@@ -97,6 +100,16 @@ public sealed class DockView
         height = h;
         canvas.Width = w;
         canvas.Height = h;
+        Fit();
+    }
+
+    // Every icon, its share of padding and spacing, and the dividers, within the screen's length less a margin.
+    private void Fit()
+    {
+        var icons = items.Count(i => i.Kind != ItemKind.Separator);
+        var dividers = items.Count - icons;
+        if (icons == 0 || Length <= 0) { fit = double.MaxValue; return; }
+        fit = Math.Max(16, (Length - 24 - dividers * 6) / (0.28 + icons + Spacing * Math.Max(0, items.Count - 1)));
     }
 
     // A new set of items: faces for the new ones, the gone ones taken out.
@@ -119,6 +132,7 @@ public sealed class DockView
             faces[item] = (face, mark);
         }
         items = next;
+        Fit();
         foreach (var item in items) if (faces[item].Face is Image image) image.Source = item.Icon;
     }
 
@@ -141,7 +155,7 @@ public sealed class DockView
     // that take clicks (the bar first, then anything sticking out beyond it) for the window's shape.
     public List<Rect> Frame(DateTimeOffset now)
     {
-        var s = IconSize;
+        var s = S;
         // The icons' resting centres, which the pointer's distance is measured from.
         var rest = new List<double>();
         double total = Pad * 2 + Gap * Math.Max(0, items.Count - 1), m;
@@ -247,7 +261,7 @@ public sealed class DockView
     public DockItem? ItemAt(double p) =>
         items.FirstOrDefault(i => i.Kind != ItemKind.Separator && p >= i.X - Gap / 2 && p < i.X + Size(i, i.Scale) + Gap / 2);
 
-    private double Size(DockItem item, double scale) => item.Kind == ItemKind.Separator ? Math.Max(Gap, 6) : IconSize * scale;
+    private double Size(DockItem item, double scale) => item.Kind == ItemKind.Separator ? Math.Max(Gap, 6) : S * scale;
 
     private static void Put(FrameworkElement el, Rect r)
     {
