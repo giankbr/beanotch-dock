@@ -57,6 +57,13 @@ public sealed partial class DockWindow
             ShowMenu(new Point(40, view.View.ActualHeight - 30));
             await Pose("menu");
             OpenSettings();
+            // In front of everything and clear of File Explorer, for the photo.
+            if (settingsWindow is { } shown)
+            {
+                if (shown.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter p) p.IsAlwaysOnTop = true;
+                var area = Microsoft.UI.Windowing.DisplayArea.Primary.WorkArea;
+                shown.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(area.X + area.Width - 700, area.Y + 60, 640, area.Height - 260));
+            }
             await Pose("settings");
             settingsWindow?.Close();
             settings.Edge = DockEdge.Left;
