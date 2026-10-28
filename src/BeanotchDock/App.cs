@@ -18,6 +18,12 @@ public sealed partial class App : Application, IXamlMetadataProvider
     [STAThread]
     private static void Main()
     {
+        // The uninstaller runs this first, so Windows' taskbar is left as it was found.
+        if (Environment.GetCommandLineArgs().Contains("--restore-taskbar"))
+        {
+            Services.Taskbar.Restore(DockSettings.Load());
+            return;
+        }
         // One dock at a time.
         single = new Mutex(true, @"Local\Beanotch.Dock", out var first);
         if (!first) return;

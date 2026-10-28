@@ -1,0 +1,359 @@
+using BeanotchDock.Services;
+using BeanotchDock.Ui;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Input;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Foundation;
+using Windows.Graphics;
+using Windows.Storage;
+using Windows.UI.ViewManagement;
+
+namespace BeanotchDock;
+
+// The dock's window: a borderless, always-on-top strip along the bottom of the main screen, see-through except for what
+// the dock draws, and clipped to it so clicks elsewhere reach the windows behind. It keeps the item list in step with
+// the pins and the running apps, draws frames while anything moves, and hands clicks, drops and menus to the shell.
+public sealed partial class DockWindow : Window
+{
+    public static string? SnapshotFolder => Environment.GetEnvironmentVariable("BEANOTCH_DOCK_SNAPSHOT") is { Length: > 0 } dir ? dir : null;
+
+    private readonly DockSettings settings = DockSettings.Load();
+    private readonly DockView view = new();
+    private readonly Grid root = new();
+    private readonly nint hwnd;
+    private readonly DispatcherQueueTimer poll, hideCheck;
+    private readonly Tasks tasks;
+    private List<DockItem> items = [];
+    private readonly DockItem separator = new() { Kind = ItemKind.Separator, Key = "|" };
+    private readonly DockItem downloads = new() { Kind = ItemKind.Downloads, Key = "downloads", Label = "Downloads" };
+    private readonly DockItem trash = new() { Kind = ItemKind.Trash, Key = "trash", Label = "Recycle Bin" };
+    private bool animating;
+    private double scale = 1;
+    private RectInt32 screen;
+    private string lastShape = "";
+    private DateTimeOffset pointerAway = DateTimeOffset.MinValue;
+
+    public DockWindow()
+    {
+        hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        var ui = DispatcherQueue.GetForCurrentThread();
+        tasks = new Tasks(hwnd);
+
+        root.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+        root.Children.Add(view.View);
+        root.PointerMoved += (_, e) => Point(e);
+        root.PointerEntered += (_, e) => Point(e);
+        root.PointerExited += (_, _) => { view.PointerX = null; pointerAway = DateTimeOffset.Now; Animate(); };
+        root.PointerReleased += OnClick;
+        root.RightTapped += OnRightTapped;
+        root.AllowDrop = true;
+        root.DragOver += OnDragOver;
+        root.Drop += OnDrop;
+        Content = root;
+        SystemBackdrop = new ClearBackdrop();
+
+        var presenter = OverlappedPresenter.Create();
+        presenter.IsAlwaysOnTop = true;
+        presenter.IsResizable = false;
+        presenter.IsMaximizable = false;
+        presenter.IsMinimizable = false;
+        presenter.SetBorderAndTitleBar(false, false);
+        AppWindow.SetPresenter(presenter);
+        Native.Frameless(hwnd);
+        AppWindow.IsShownInSwitchers = false;
+        AppWindow.Title = "Beanotch Dock";
+        AppWindow.Closing += (_, _) => Quit();
+
+        view.Restyle(SystemDark());
+        new UISettings().ColorValuesChanged += (_, _) => ui.TryEnqueue(() => view.Restyle(SystemDark()));
+        Apply();
+
+        if (!settings.Imported) ImportTaskbarPins();
+        if (settings.HideTaskbar) Taskbar.Hide(settings);
+        Refresh();
+
+        // The running apps, checked twice a second: cheap, and it also catches title and icon changes.
+        poll = ui.CreateTimer();
+        poll.Interval = TimeSpan.FromMilliseconds(500);
+        poll.Tick += (_, _) => Refresh();
+        poll.Start();
+        // With auto-hide on, the pointer at the screen's bottom edge brings the dock up.
+        hideCheck = ui.CreateTimer();
+        hideCheck.Interval = TimeSpan.FromMilliseconds(80);
+        hideCheck.Tick += (_, _) => WatchEdge();
+        hideCheck.Start();
+
+        CompositionTarget.Rendering += (_, _) => { if (animating) Draw(); };
+        Animate();
+        if (SnapshotFolder is { } dir) _ = SnapshotAsync(dir);
+    }
+
+    private static bool SystemDark() => new UISettings().GetColorValue(UIColorType.Background).R < 128;
+
+    // Size and place the strip: the full width of the main screen, tall enough for magnified icons and labels.
+    private void Apply()
+    {
+        view.IconSize = settings.IconSize;
+        view.Magnification = settings.Magnify ? 1.7 : 1;
+        var display = DisplayArea.Primary;
+        screen = display.OuterBounds;
+        scale = Native.GetDpiForWindow(hwnd) / 96.0;
+        var h = (int)Math.Ceiling(view.Height * scale);
+        AppWindow.MoveAndResize(new RectInt32(screen.X, screen.Y + screen.Height - h, screen.Width, h));
+        view.Resize(screen.Width / scale, h / scale);
+        lastShape = "";
+        Animate();
+    }
+
+    private void Point(PointerRoutedEventArgs e)
+    {
+        view.PointerX = e.GetCurrentPoint(root).Position.X;
+        Animate();
+    }
+
+    // Frames run while something moves, and stop once the dock is still.
+    private void Animate() => animating = true;
+
+    private void Draw()
+    {
+        var now = DateTimeOffset.Now;
+        view.Tucked += ((Hidden ? 1 : 0) - view.Tucked) * 0.25;
+        if (Math.Abs(view.Tucked - (Hidden ? 1 : 0)) < 0.01) view.Tucked = Hidden ? 1 : 0;
+        var shapes = view.Frame(now);
+        Clip(shapes);
+        if (view.PointerX is null && view.Settled && (view.Tucked == 0 || view.Tucked == 1)) animating = false;
+    }
+
+    // Only the drawn parts take the mouse: everything else in the strip passes clicks to what's behind.
+    private void Clip(List<Rect> shapes)
+    {
+        var px = shapes.Select(r => new RectInt32((int)Math.Floor(r.X * scale), (int)Math.Floor(r.Y * scale),
+                                                  (int)Math.Ceiling(r.Width * scale), (int)Math.Ceiling(r.Height * scale))).ToList();
+        var key = string.Join(";", px.Select(r => $"{r.X},{r.Y},{r.Width},{r.Height}"));
+        if (key == lastShape) return;
+        lastShape = key;
+        Native.Shape(hwnd, px, (int)Math.Round(20 * scale));
+    }
+
+    // Tucked away: auto-hide on, the pointer gone for a moment, and no menu open.
+    private bool Hidden => settings.AutoHide && view.PointerX is null && DateTimeOffset.Now - pointerAway > TimeSpan.FromSeconds(0.6) && !menuOpen;
+
+    private void WatchEdge()
+    {
+        if (!settings.AutoHide) return;
+        if (Native.Cursor() is { } c && c.Y >= screen.Y + screen.Height - 2 && c.X >= screen.X && c.X < screen.X + screen.Width)
+        {
+            pointerAway = DateTimeOffset.Now.AddSeconds(1);
+            Animate();
+        }
+        else if (view.Tucked < 1) Animate();
+    }
+
+    // The items in order: the pins, then apps running that aren't pinned, then Downloads and the Recycle Bin.
+    private void Refresh()
+    {
+        var windows = tasks.Windows();
+        var foreground = Native.Foreground();
+        var next = new List<DockItem>();
+        DockItem Find(string key) => items.FirstOrDefault(i => i.Key == key) ?? new DockItem { Kind = ItemKind.App, Key = key };
+
+        foreach (var pin in settings.Pins)
+        {
+            var item = Find(Shell.KeyFor(pin));
+            item.Pin = pin;
+            item.Label = pin.Name;
+            next.Add(item);
+        }
+        foreach (var group in windows.GroupBy(w => w.Key))
+        {
+            var item = next.FirstOrDefault(i => i.Key == group.Key);
+            if (item is null)
+            {
+                item = Find(group.Key);
+                item.Pin = null;
+                item.Label = group.First().AppName;
+                next.Add(item);
+            }
+            item.Windows.Clear();
+            item.Windows.AddRange(group.Select(w => w.Handle));
+            item.Source ??= group.First();
+        }
+        foreach (var item in next.Where(i => !windows.Any(w => w.Key == i.Key))) item.Windows.Clear();
+        foreach (var item in next) item.Active = item.Windows.Contains(foreground);
+
+        next.Add(separator);
+        if (settings.Downloads) next.Add(downloads);
+        next.Add(trash);
+
+        var changed = next.Count != items.Count || next.Where((item, i) => items[i] != item).Any();
+        items = next;
+        foreach (var item in items.Where(i => i.Icon is null && i.Kind != ItemKind.Separator)) _ = LoadIconAsync(item);
+        if (trash.Icon is not null && Shell.TrashFull != trashFull) { trashFull = Shell.TrashFull; _ = LoadIconAsync(trash); }
+        if (changed)
+        {
+            view.SetItems(items);
+            Animate();
+        }
+    }
+
+    private bool trashFull;
+
+    private async Task LoadIconAsync(DockItem item)
+    {
+        var icon = await Icons.ForAsync(item);
+        if (icon is null) return;
+        item.Icon = icon;
+        view.RefreshIcon(item);
+        Animate();
+    }
+
+    private void OnClick(object sender, PointerRoutedEventArgs e)
+    {
+        var point = e.GetCurrentPoint(root);
+        if (point.Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonReleased) return;
+        if (view.ItemAt(point.Position.X) is not { } item) return;
+        switch (item.Kind)
+        {
+            case ItemKind.Trash: Shell.OpenTrash(); break;
+            case ItemKind.Downloads: Shell.OpenDownloads(); break;
+            default:
+                // As on the Mac: a running app comes to the front, with its most recent window; one that isn't opens.
+                if (item.Running) Shell.Activate(item.Windows);
+                else if (item.Pin is { } pin && Shell.Launch(pin)) { item.LaunchedAt = DateTimeOffset.Now; Animate(); }
+                break;
+        }
+    }
+
+    private bool menuOpen;
+
+    private void OnRightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        ShowMenu(e.GetPosition(root));
+        e.Handled = true;
+    }
+
+    private void ShowMenu(Point at)
+    {
+        var x = at.X;
+        var menu = new MenuFlyout();
+        void Add(string text, Action act, bool check = false, bool isChecked = false)
+        {
+            MenuFlyoutItemBase entry = check
+                ? new ToggleMenuFlyoutItem { Text = text, IsChecked = isChecked }
+                : new MenuFlyoutItem { Text = text };
+            ((MenuFlyoutItem)entry).Click += (_, _) => act();
+            menu.Items.Add(entry);
+        }
+        var item = view.ItemAt(x);
+        if (item is { IsApp: true })
+        {
+            if (item.Windows.Count > 1)
+            {
+                foreach (var w in item.Windows.Take(8)) Add(Native.Title(w) is { Length: > 0 } t ? t : item.Label, () => Shell.Activate([w]));
+                menu.Items.Add(new MenuFlyoutSeparator());
+            }
+            if (item.Running && item.Pin is null) Add("Keep in Dock", () => Pin(item));
+            if (item.Pin is not null) Add("Remove from Dock", () => Unpin(item));
+            if (item.Pin is { } pin || item.Source is not null) Add("Show in File Explorer", () => Shell.Reveal(item));
+            if (!item.Running && item.Pin is { } p) Add("Open", () => { if (Shell.Launch(p)) { item.LaunchedAt = DateTimeOffset.Now; Animate(); } });
+            if (item.Running) Add("Quit", () => Shell.Close(item.Windows));
+        }
+        else if (item is { Kind: ItemKind.Trash })
+        {
+            Add("Open", Shell.OpenTrash);
+            Add("Empty Recycle Bin", Shell.EmptyTrash);
+        }
+        else if (item is { Kind: ItemKind.Downloads })
+        {
+            Add("Open Downloads", Shell.OpenDownloads);
+        }
+        else
+        {
+            Add("Magnification", () => { settings.Magnify = !settings.Magnify; Save(); }, true, settings.Magnify);
+            Add("Automatically hide the Dock", () => { settings.AutoHide = !settings.AutoHide; Save(); }, true, settings.AutoHide);
+            Add("Hide the Windows taskbar", () =>
+            {
+                settings.HideTaskbar = !settings.HideTaskbar;
+                if (settings.HideTaskbar) Taskbar.Hide(settings); else Taskbar.Restore(settings);
+                Save();
+            }, true, settings.HideTaskbar);
+            Add("Show Downloads", () => { settings.Downloads = !settings.Downloads; Save(); Refresh(); }, true, settings.Downloads);
+            var size = new MenuFlyoutSubItem { Text = "Size" };
+            foreach (var s in Enum.GetValues<DockSize>())
+            {
+                var entry = new ToggleMenuFlyoutItem { Text = s.ToString(), IsChecked = settings.Size == s };
+                entry.Click += (_, _) => { settings.Size = s; Save(); };
+                size.Items.Add(entry);
+            }
+            menu.Items.Add(size);
+            Add("Open at sign-in", () => Startup.Set(!Startup.On), true, Startup.On);
+            menu.Items.Add(new MenuFlyoutSeparator());
+            Add("Quit Beanotch Dock", Quit);
+        }
+        menuOpen = true;
+        menu.Closed += (_, _) => { menuOpen = false; pointerAway = DateTimeOffset.Now; Animate(); };
+        menu.ShowAt(root, at);
+    }
+
+    private void Save()
+    {
+        settings.Save();
+        Apply();
+    }
+
+    private void Pin(DockItem item)
+    {
+        if (Shell.PinFor(item) is not { } pin) return;
+        settings.Pins.Add(pin);
+        settings.Save();
+        Refresh();
+    }
+
+    private void Unpin(DockItem item)
+    {
+        if (item.Pin is null) return;
+        settings.Pins.Remove(item.Pin);
+        item.Pin = null;
+        settings.Save();
+        Refresh();
+    }
+
+    // Windows' own taskbar pins, as the dock's first set.
+    private void ImportTaskbarPins()
+    {
+        settings.Pins = Shell.TaskbarPins();
+        settings.Imported = true;
+        settings.Save();
+    }
+
+    // Files dragged over the dock: the Recycle Bin takes them away, an app opens them.
+    private void OnDragOver(object sender, DragEventArgs e)
+    {
+        view.PointerX = e.GetPosition(root).X;
+        Animate();
+        var item = view.ItemAt(view.PointerX.Value);
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems) || item is null || item.Kind is ItemKind.Downloads or ItemKind.Separator) return;
+        e.AcceptedOperation = item.Kind == ItemKind.Trash ? DataPackageOperation.Move : DataPackageOperation.Copy;
+        e.DragUIOverride.Caption = item.Kind == ItemKind.Trash ? "Move to Recycle Bin" : "Open with " + item.Label;
+    }
+
+    private async void OnDrop(object sender, DragEventArgs e)
+    {
+        var item = view.ItemAt(e.GetPosition(root).X);
+        if (item is null || !e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+        var paths = (await e.DataView.GetStorageItemsAsync()).Select(f => f.Path).Where(p => p.Length > 0).ToList();
+        if (item.Kind == ItemKind.Trash) Shell.Recycle(paths);
+        else if (item.IsApp) Shell.OpenWith(item, paths);
+    }
+
+    private void Quit()
+    {
+        if (settings.HideTaskbar) Taskbar.Restore(settings);
+        Application.Current.Exit();
+    }
+}

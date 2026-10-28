@@ -54,5 +54,8 @@ Filename: "{app}\BeanotchDock.exe"; Description: "Open Beanotch Dock"; Flags: no
 ; An update from inside the app runs this quietly; open the new version when it's done.
 Filename: "{app}\BeanotchDock.exe"; Flags: nowait; Check: WizardSilent
 
+[UninstallRun]
+Filename: "{app}\BeanotchDock.exe"; Parameters: "--restore-taskbar"; Flags: runhidden waituntilterminated; RunOnceId: "RestoreTaskbar"
+
 [UninstallDelete]
 Type: filesandordirs; Name: "{localappdata}\BeanotchDock"

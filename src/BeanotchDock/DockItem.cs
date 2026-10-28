@@ -14,6 +14,8 @@ public sealed class DockItem
     public Pin? Pin { get; set; }
     public ImageSource? Icon { get; set; }
     public List<nint> Windows { get; } = [];
+    // The front window it was last seen with: where its program and ID come from when it isn't pinned.
+    public Services.TaskWindow? Source { get; set; }
     public bool Active { get; set; }
     // A launch in progress: it bounces until a window shows up, or for a few seconds.
     public DateTimeOffset? LaunchedAt { get; set; }
