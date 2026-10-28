@@ -30,7 +30,7 @@ public sealed class DockView
     public double Magnification { get; set; } = 1.7;
     public DockEdge Edge { get; set; } = DockEdge.Bottom;
     // The bar's glass: how solid (0–1), how round, the gap between icons (a share of an icon) and from the screen's edge.
-    public double Opacity { get; set; } = 0.65;
+    public double Opacity { get; set; } = 0.8;
     public double Radius { get; set; } = 20;
     public double Spacing { get; set; } = 0.1;
     public double Margin { get; set; } = 8;

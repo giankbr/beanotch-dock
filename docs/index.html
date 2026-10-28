@@ -509,6 +509,8 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
 }
 
 /* Beanotch Dock: a desktop to set the dock on, and the dock itself in the theme's look. */
+.brand { white-space: nowrap; }
+@media (max-width: 420px) { .brand { font-size: 15.5px; } .nav-right { gap: 6px; } }
 :root[data-theme="dark"] .only-light, :root[data-theme="light"] .only-dark { display: none !important; }
 .desktop { position: relative; aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; border: 1px solid var(--border);
   background: radial-gradient(110% 90% at 15% 10%, #6ea8ff 0%, transparent 55%), radial-gradient(90% 80% at 95% 15%, #c08bff 0%, transparent 55%),
@@ -532,6 +534,8 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
 .feature-shot img { width: 96%; }
 .menu-shot { border-radius: 18px; overflow: hidden; border: 1px solid var(--border); }
 .menu-shot img { width: 100%; }
+.settings-shot { aspect-ratio: 4 / 3.4 !important; align-items: flex-start !important; background: #1b5fd6 !important; }
+.settings-shot img { width: 100% !important; height: 100%; object-fit: cover; object-position: top left; }
 @media (max-width: 560px) { .desktop { aspect-ratio: 4 / 3; } .desktop .w2 { display: none; } .desktop .w1 { width: 80%; } .desktop .dock { left: -10%; right: -10%; } }
 </style>
 </head>
@@ -543,7 +547,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
   <div class="bar">
     <a class="brand" href="#"><img src="assets/icon.png" alt="">Beanotch Dock</a>
     <div class="nav-links">
-      <a href="#features">Features</a><a href="#details">Details</a><a href="#menu">Menu</a><a href="#faq">FAQ</a><a href="#download">Download</a>
+      <a href="#features">Features</a><a href="#details">Details</a><a href="#settings">Settings</a><a href="#faq">FAQ</a><a href="#download">Download</a>
     </div>
     <div class="nav-right">
       <a class="icon-btn" href="https://github.com/giankbr/beanotch-dock" aria-label="Beanotch Dock on GitHub"><i data-lucide="github"></i></a>
@@ -583,7 +587,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
   <div class="wrap">
     <div class="stat"><strong data-size="win">20 MB</strong><span>Download, .NET included</span></div>
     <div class="stat"><strong>1.7×</strong><span>Magnification</span></div>
-    <div class="stat"><strong>3</strong><span>Sizes</span></div>
+    <div class="stat"><strong>3</strong><span>Edges to sit on</span></div>
     <div class="stat"><strong>0</strong><span>Accounts or trackers</span></div>
   </div>
 </div>
@@ -615,10 +619,24 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
       <article class="feature"><div><h3><span><i data-lucide="trash-2"></i></span>Recycle Bin</h3><p>Full or empty at a glance. Drag files onto it to throw them away; right-click to empty it.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="download"></i></span>Downloads</h3><p>Your Downloads folder sits at the end of the dock, one click away.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="file-up"></i></span>Drop files on apps</h3><p>Drag a file onto an app's icon and it opens there.</p></div></article>
-      <article class="feature"><div><h3><span><i data-lucide="eye-off"></i></span>Auto-hide</h3><p>Tuck the dock away until the pointer meets the bottom of the screen.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="eye-off"></i></span>Auto-hide</h3><p>Tuck the dock away until the pointer meets its edge of the screen, and choose how long it waits.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="panel-bottom"></i></span>The taskbar steps aside</h3><p>Windows' taskbar hides itself while the dock runs, and comes back exactly as it was when you quit or uninstall.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="layers"></i></span>Store apps, grouped right</h3><p>Terminal, Calculator and other Store apps show under their own names and icons.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="moon"></i></span>Light and dark</h3><p>The glass follows Windows' own light or dark mode.</p></div></article>
+    </div>
+  </div>
+</section>
+
+<section id="settings" style="border-top:1px solid var(--border)">
+  <div class="wrap">
+    <div class="center">
+      <span class="eyebrow">Make it yours</span>
+      <h2>Your dock,<em>your way.</em></h2>
+      <p class="sub">Right-click the dock › Dock Settings. Everything changes as you go, with the dock right there behind the window.</p>
+    </div>
+    <div class="grid-2 panels">
+      <article class="card panel-card"><div class="shot settings-shot"><img src="assets/settings.png" alt="Dock Settings: size, magnification, position, look, glass, corners, spacing and more" loading="lazy"></div><div class="txt"><h3>Dock Settings</h3><p>Size, magnification and how much, the look, how see-through the glass is, corners, spacing, distance from the edge, names, open-app marks, auto-hide timing, bounce, and the order of your apps.</p></div></article>
+      <article class="card panel-card"><div class="shot settings-shot"><img src="assets/left.png" alt="Beanotch Dock along the left edge of a Windows desktop" loading="lazy"></div><div class="txt"><h3>Bottom, left or right</h3><p>Put the dock on any edge. It shrinks to fit when you keep more apps than the screen has room for.</p></div></article>
     </div>
   </div>
 </section>
@@ -662,7 +680,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
     </div>
     <article class="card get" style="margin-top:56px">
       <div class="title"><b><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg>Windows</b><span class="beta">Beta</span></div>
-      <p class="meta-line"><span class="ver">v0.1.0</span> · Windows 10 and 11 · x64 &amp; Snapdragon (ARM) · <span data-size="win">20 MB</span>, .NET included</p>
+      <p class="meta-line"><span class="ver">v0.2.0</span> · Windows 10 and 11 · x64 &amp; Snapdragon (ARM) · <span data-size="win">20 MB</span>, .NET included</p>
       <div class="cta-row" style="justify-content:flex-start">
         <a class="btn btn-primary win-dl" id="winDownload" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-x64.exe"><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg><span>Download for Windows</span></a>
         <a class="btn btn-ghost" id="winOther" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-arm64.exe"><i data-lucide="cpu"></i><span>ARM</span></a>
@@ -698,7 +716,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
       </div>
     </div>
     <div class="cols">
-      <div><h5>PRODUCT</h5><a href="#features">Features</a><a href="#details">Details</a><a href="#menu">Menu</a><a href="https://github.com/giankbr/beanotch-dock/releases">Releases</a></div>
+      <div><h5>PRODUCT</h5><a href="#features">Features</a><a href="#details">Details</a><a href="#settings">Settings</a><a href="https://github.com/giankbr/beanotch-dock/releases">Releases</a></div>
       <div><h5>PROJECT</h5><a href="https://github.com/giankbr/beanotch-dock">GitHub</a><a href="https://github.com/giankbr/beanotch-dock/releases">Changelog</a><a href="https://github.com/giankbr/beanotch-dock/issues">Report an issue</a><a href="https://giankbr.github.io/beanie-notch">Beanotch</a></div>
       <div><h5>PRIVACY</h5><span>No tracking</span><span>No account</span><span>Nothing leaves your PC</span></div>
       <div><h5>REQUIREMENTS</h5><span>Windows 10 or 11</span><span>x64 or ARM</span><span data-size="win">20 MB</span><span id="version">v0.1.0</span></div>

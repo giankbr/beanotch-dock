@@ -28,7 +28,7 @@ public sealed class DockSettings
     public double Magnification { get; set; } = 1.7;
     public DockEdge Edge { get; set; } = DockEdge.Bottom;
     public DockTheme Theme { get; set; } = DockTheme.Auto;
-    public double Opacity { get; set; } = 0.65;
+    public double Opacity { get; set; } = 0.8;
     public double Roundness { get; set; } = 20;
     public double Spacing { get; set; } = 0.1;
     public double Margin { get; set; } = 8;
