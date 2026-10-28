@@ -7,7 +7,7 @@
 <meta name="description" content="Beanotch Dock brings the macOS Dock to Windows 10 and 11: magnifying icons, running dots, pinned apps, Downloads and the Recycle Bin, auto-hide. Free and open source.">
 <meta property="og:title" content="Beanotch Dock — The Mac dock, right on Windows">
 <meta property="og:description" content="A macOS-style dock for Windows. Free and open source.">
-<meta property="og:image" content="assets/dock-magnified-light.png">
+<meta property="og:image" content="assets/desktop-light.jpg">
 <link rel="icon" href="assets/icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -526,6 +526,8 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
 .desktop .win .body b { display: block; height: 10px; border-radius: 5px; background: var(--surface-2); }
 .desktop .w1 { left: 7%; top: 9%; width: 48%; height: 58%; }
 .desktop .w2 { right: 6%; top: 18%; width: 34%; height: 44%; }
+.desktop.real { aspect-ratio: auto; background: none; }
+.desktop.real img { width: 100%; }
 .desktop .dock { position: absolute; left: 12%; right: 12%; bottom: 0; }
 .desktop .dock img { width: 100%; }
 .feature-shot { background: var(--inner); border-radius: 16px; margin: 8px 8px 0; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; aspect-ratio: 16 / 6.5;
@@ -535,6 +537,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
 .menu-shot { border-radius: 18px; overflow: hidden; border: 1px solid var(--border); }
 .menu-shot img { width: 100%; }
 .settings-shot { aspect-ratio: 4 / 3.4 !important; align-items: flex-start !important; background: #1b5fd6 !important; }
+.settings-shot img.only-light, .settings-shot img.only-dark { height: 100%; }
 .settings-shot img { width: 100% !important; height: 100%; object-fit: cover; object-position: top left; }
 @media (max-width: 560px) { .desktop { aspect-ratio: 4 / 3; } .desktop .w2 { display: none; } .desktop .w1 { width: 80%; } .desktop .dock { left: -10%; right: -10%; } }
 </style>
@@ -574,10 +577,9 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
     </div>
   </div>
   <div class="stage"><div class="hero-shot">
-    <div class="desktop">
-      <div class="win w1"><div class="tb">File Explorer<span><i>—</i><i>▢</i><i>✕</i></span></div><div class="body"><b style="width:60%"></b><b style="width:85%"></b><b style="width:72%"></b><b style="width:40%"></b><b style="width:78%"></b></div></div>
-      <div class="win w2"><div class="tb">Notepad<span><i>—</i><i>▢</i><i>✕</i></span></div><div class="body"><b style="width:90%"></b><b style="width:70%"></b><b style="width:82%"></b></div></div>
-      <div class="dock"><img class="only-light" src="assets/dock-magnified-light.png" alt="Beanotch Dock along the bottom of a Windows desktop, one icon magnified under the pointer"><img class="only-dark" src="assets/dock-magnified-dark.png" alt=""></div>
+    <div class="desktop real">
+      <img class="only-light" src="assets/desktop-light.jpg" alt="Beanotch Dock along the bottom of a Windows 11 desktop, Firefox magnified under the pointer, with File Explorer open">
+      <img class="only-dark" src="assets/desktop-dark.jpg" alt="">
     </div>
   </div></div>
   <div style="position:relative;max-width:1200px;margin:0 auto"><div class="hero-glow"></div></div>
@@ -635,8 +637,8 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
       <p class="sub">Right-click the dock › Dock Settings. Everything changes as you go, with the dock right there behind the window.</p>
     </div>
     <div class="grid-2 panels">
-      <article class="card panel-card"><div class="shot settings-shot"><img src="assets/settings.png" alt="Dock Settings: size, magnification, position, look, glass, corners, spacing and more" loading="lazy"></div><div class="txt"><h3>Dock Settings</h3><p>Size, magnification and how much, the look, how see-through the glass is, corners, spacing, distance from the edge, names, open-app marks, auto-hide timing, bounce, and the order of your apps.</p></div></article>
-      <article class="card panel-card"><div class="shot settings-shot"><img src="assets/left.png" alt="Beanotch Dock along the left edge of a Windows desktop" loading="lazy"></div><div class="txt"><h3>Bottom, left or right</h3><p>Put the dock on any edge. It shrinks to fit when you keep more apps than the screen has room for.</p></div></article>
+      <article class="card panel-card"><div class="shot settings-shot"><img class="only-light" src="assets/settings-light.jpg" alt="Dock Settings: size, magnification, position, look, glass, corners, spacing and more" loading="lazy"><img class="only-dark" src="assets/settings-dark.jpg" alt="" loading="lazy"></div><div class="txt"><h3>Dock Settings</h3><p>Size, magnification and how much, the look, how see-through the glass is, corners, spacing, distance from the edge, names, open-app marks, auto-hide timing, bounce, and the order of your apps.</p></div></article>
+      <article class="card panel-card"><div class="shot settings-shot"><img class="only-light" src="assets/left-light.jpg" alt="Beanotch Dock along the left edge of a Windows desktop" loading="lazy"><img class="only-dark" src="assets/left-dark.jpg" alt="" loading="lazy"></div><div class="txt"><h3>Bottom, left or right</h3><p>Put the dock on any edge. It shrinks to fit when you keep more apps than the screen has room for.</p></div></article>
     </div>
   </div>
 </section>
@@ -647,10 +649,10 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
       <div>
         <span class="eyebrow">Right-click</span>
         <h2>Settings live<em>in the dock.</em></h2>
-        <p class="sub">Right-click an empty part of the dock for magnification, auto-hide, the taskbar, Downloads, size and opening at sign-in. Right-click an app to keep it, remove it, find it in File Explorer or quit it.</p>
+        <p class="sub">Right-click an empty part of the dock for magnification, auto-hide, which edge it sits on, and Dock Settings for everything else. Right-click an app to keep it, remove it, find it in File Explorer or quit it.</p>
       </div>
     </div>
-    <div class="card menu-shot" style="margin-top:40px"><img src="assets/menu.png" alt="The dock's menu on a Windows desktop: Magnification, Automatically hide the Dock, Hide the Windows taskbar, Show Downloads, Size, Open at sign-in, Quit" loading="lazy"></div>
+    <div class="card menu-shot" style="margin-top:40px"><img class="only-light" src="assets/menu-light.jpg" alt="The dock's menu on a Windows desktop: Magnification, Automatically hide the Dock, Hide the Windows taskbar, Show Downloads, Size, Open at sign-in, Quit" loading="lazy"><img class="only-dark" src="assets/menu-dark.jpg" alt="" loading="lazy"></div>
   </div>
 </section>
 
