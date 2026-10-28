@@ -55,6 +55,9 @@ Start-Sleep -Seconds 5
 
 foreach ($look in "light", "dark") {
   Look ($look -eq "dark")
+  # The runner sometimes greets the session with a paging-file notice; close it.
+  $notice = [Desk]::FindWindow($null, "System Properties")
+  if ($notice -ne [IntPtr]::Zero) { [Desk]::ShowWindow($notice, 0) | Out-Null }
   (New-Object -ComObject Shell.Application).MinimizeAll()
   Start-Sleep -Seconds 2
   $dir = Join-Path $Out $look
