@@ -106,6 +106,29 @@ static partial class Shell
         ];
     }
 
+    // MARK: Start
+
+    [StructLayout(LayoutKind.Explicit, Size = 40)]
+    private struct KeyInput
+    {
+        [FieldOffset(0)] public uint Type;
+        [FieldOffset(8)] public ushort Key;
+        [FieldOffset(10)] public ushort Scan;
+        [FieldOffset(12)] public uint Flags;
+        [FieldOffset(16)] public uint Time;
+        [FieldOffset(24)] public nint Extra;
+    }
+
+    [LibraryImport("user32.dll")]
+    private static partial uint SendInput(uint count, [In] KeyInput[] inputs, int size);
+
+    // Opens the Start menu, as a press of the Windows key would.
+    public static void OpenStart()
+    {
+        KeyInput[] keys = [new() { Type = 1, Key = 0x5B }, new() { Type = 1, Key = 0x5B, Flags = 2 }]; // VK_LWIN down, up
+        SendInput((uint)keys.Length, keys, Marshal.SizeOf<KeyInput>());
+    }
+
     // MARK: Downloads
 
     [LibraryImport("shell32.dll")]

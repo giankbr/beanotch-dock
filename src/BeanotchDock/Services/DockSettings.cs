@@ -44,8 +44,12 @@ public sealed class DockSettings
     public bool ShowRunning { get; set; } = true;
     // Windows' habit: clicking the app in front minimizes it. Off, as on the Mac: it stays.
     public bool ClickMinimizes { get; set; }
+    // Out of the way while a game, a video or a slideshow fills the screen.
+    public bool HideInFullscreen { get; set; } = true;
 
     // Items
+    // Windows' Start button at the head of the dock, since the taskbar that holds it is out of sight.
+    public bool StartButton { get; set; } = true;
     public bool Downloads { get; set; } = true;
     public bool Trash { get; set; } = true;
     public bool Separator { get; set; } = true;
@@ -61,8 +65,9 @@ public sealed class DockSettings
         var d = new DockSettings();
         (IconSize, Magnify, Magnification, Edge, Theme, Opacity, Roundness, Spacing, Margin, Labels, Indicator) =
             (d.IconSize, d.Magnify, d.Magnification, d.Edge, d.Theme, d.Opacity, d.Roundness, d.Spacing, d.Margin, d.Labels, d.Indicator);
-        (AutoHide, HideDelay, Bounce, ShowRunning, ClickMinimizes, Downloads, Trash, Separator) =
-            (d.AutoHide, d.HideDelay, d.Bounce, d.ShowRunning, d.ClickMinimizes, d.Downloads, d.Trash, d.Separator);
+        (AutoHide, HideDelay, Bounce, ShowRunning, ClickMinimizes, HideInFullscreen) =
+            (d.AutoHide, d.HideDelay, d.Bounce, d.ShowRunning, d.ClickMinimizes, d.HideInFullscreen);
+        (StartButton, Downloads, Trash, Separator) = (d.StartButton, d.Downloads, d.Trash, d.Separator);
     }
 
     public static string Folder => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "BeanotchDock");

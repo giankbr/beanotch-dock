@@ -85,6 +85,7 @@ static partial class Icons
 
     public static Task<ImageSource?> ForAsync(DockItem item)
     {
+        if (item.Kind == ItemKind.Start) return Task.FromResult<ImageSource?>(StartLogo());
         if (Source(item) is not { } source) return Task.FromResult<ImageSource?>(null);
         // The Recycle Bin's picture changes with what's in it, so it's never kept.
         if (item.Kind != ItemKind.Trash && Cache.TryGetValue(source, out var known)) return Task.FromResult<ImageSource?>(known);
@@ -121,6 +122,32 @@ static partial class Icons
         try { if (GetDIBits(dc, hbitmap, 0, (uint)bmp.Height, pixels, ref header, 0) == 0) return null; }
         finally { ReleaseDC(0, dc); }
         var image = new WriteableBitmap(bmp.Width, bmp.Height);
+        using (var stream = image.PixelBuffer.AsStream()) stream.Write(pixels, 0, pixels.Length);
+        image.Invalidate();
+        return image;
+    }
+
+    // Windows' four panes in its blue, drawn rather than borrowed: the shell has no picture of the Start button.
+    private static WriteableBitmap StartLogo()
+    {
+        const int size = 256, gap = 10, pad = 36;
+        var pixels = new byte[size * size * 4];
+        var pane = (size - pad * 2 - gap) / 2;
+        for (var y = 0; y < size; y++)
+            for (var x = 0; x < size; x++)
+            {
+                int px = x - pad, py = y - pad;
+                if (px < 0 || py < 0 || px >= pane * 2 + gap || py >= pane * 2 + gap) continue;
+                if ((px >= pane && px < pane + gap) || (py >= pane && py < pane + gap)) continue;
+                // Light at the top left to deep at the bottom right, as in Windows 11's logo.
+                var t = (px + py) / (double)((pane * 2 + gap) * 2);
+                var i = (y * size + x) * 4;
+                pixels[i] = (byte)(255 - 40 * t);
+                pixels[i + 1] = (byte)(170 - 90 * t);
+                pixels[i + 2] = (byte)(40 - 30 * t);
+                pixels[i + 3] = 255;
+            }
+        var image = new WriteableBitmap(size, size);
         using (var stream = image.PixelBuffer.AsStream()) stream.Write(pixels, 0, pixels.Length);
         image.Invalidate();
         return image;

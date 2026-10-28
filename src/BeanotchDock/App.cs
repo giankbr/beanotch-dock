@@ -14,6 +14,8 @@ public sealed partial class App : Application, IXamlMetadataProvider
     private DockWindow? window;
 
     private static Mutex? single;
+    private const string SettingsSignal = @"Local\Beanotch.Dock.Settings";
+    private static EventWaitHandle? settingsAsked;
 
     [STAThread]
     private static void Main()
@@ -24,9 +26,14 @@ public sealed partial class App : Application, IXamlMetadataProvider
             Services.Taskbar.Restore(DockSettings.Load());
             return;
         }
-        // One dock at a time.
+        // One dock at a time. Opening it again (from Start, say) asks the running one for its settings.
         single = new Mutex(true, @"Local\Beanotch.Dock", out var first);
-        if (!first) return;
+        if (!first)
+        {
+            if (EventWaitHandle.TryOpenExisting(SettingsSignal, out var signal)) signal.Set();
+            return;
+        }
+        settingsAsked = new EventWaitHandle(false, EventResetMode.AutoReset, SettingsSignal);
         WinRT.ComWrappersSupport.InitializeComWrappers();
         Start(_ =>
         {
@@ -65,6 +72,11 @@ public sealed partial class App : Application, IXamlMetadataProvider
         Resources.MergedDictionaries.Add(new XamlControlsResources());
         window = new DockWindow();
         window.Activate();
+        var ui = DispatcherQueue.GetForCurrentThread();
+        new Thread(() =>
+        {
+            while (settingsAsked?.WaitOne() == true) ui.TryEnqueue(() => window?.OpenSettings());
+        }) { IsBackground = true, Name = "Settings requests" }.Start();
     }
 
     public IXamlType GetXamlType(Type type) => controls.GetXamlType(type);

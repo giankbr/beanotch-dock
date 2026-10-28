@@ -2,9 +2,10 @@ using Microsoft.UI.Xaml.Media;
 
 namespace BeanotchDock;
 
-public enum ItemKind { App, Separator, Downloads, Trash }
+public enum ItemKind { App, Separator, Downloads, Trash, Start }
 
-// One thing in the dock: an app (kept, running, or both), the line before the stacks, Downloads, or the Recycle Bin.
+// One thing in the dock: the Start button, an app (kept, running, or both), the line before the stacks, Downloads, or
+// the Recycle Bin.
 public sealed class DockItem
 {
     public ItemKind Kind { get; init; }

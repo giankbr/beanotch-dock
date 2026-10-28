@@ -70,10 +70,13 @@ public sealed partial class SettingsWindow : Window
             Row("Show open apps that aren't kept in the Dock", "They sit after the ones you keep",
                 Toggle(settings.ShowRunning, v => settings.ShowRunning = v)),
             Row("Click the app in front to minimize it", "As on Windows. Off, as on the Mac: it stays",
-                Toggle(settings.ClickMinimizes, v => settings.ClickMinimizes = v)));
+                Toggle(settings.ClickMinimizes, v => settings.ClickMinimizes = v)),
+            Row("Hide when an app is full screen", "Games, videos and slideshows keep the screen to themselves",
+                Toggle(settings.HideInFullscreen, v => settings.HideInFullscreen = v)));
 
         Section("Items");
         Card(
+            Row("Start button", "Windows' Start, at the head of the dock", Toggle(settings.StartButton, v => settings.StartButton = v)),
             Row("Downloads", "Your Downloads folder, at the end", Toggle(settings.Downloads, v => settings.Downloads = v)),
             Row("Recycle Bin", "At the very end; drop files on it to throw them away", Toggle(settings.Trash, v => settings.Trash = v)),
             Row("Divider", "The line before Downloads and the Recycle Bin", Toggle(settings.Separator, v => settings.Separator = v)));

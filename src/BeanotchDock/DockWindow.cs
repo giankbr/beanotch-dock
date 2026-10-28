@@ -32,6 +32,8 @@ public sealed partial class DockWindow : Window
     private readonly DockItem separator = new() { Kind = ItemKind.Separator, Key = "|" };
     private readonly DockItem downloads = new() { Kind = ItemKind.Downloads, Key = "downloads", Label = "Downloads" };
     private readonly DockItem trash = new() { Kind = ItemKind.Trash, Key = "trash", Label = "Recycle Bin" };
+    private readonly DockItem start = new() { Kind = ItemKind.Start, Key = "start", Label = "Start" };
+    private bool hiddenForFullscreen;
     private bool animating;
     private double scale = 1;
     private RectInt32 screen;
@@ -79,7 +81,7 @@ public sealed partial class DockWindow : Window
         // The running apps, checked twice a second: cheap, and it also catches title and icon changes.
         poll = ui.CreateTimer();
         poll.Interval = TimeSpan.FromMilliseconds(500);
-        poll.Tick += (_, _) => Refresh();
+        poll.Tick += (_, _) => { Refresh(); WatchFullscreen(); };
         poll.Start();
         // With auto-hide on, the pointer at the screen's bottom edge brings the dock up.
         hideCheck = ui.CreateTimer();
@@ -181,12 +183,23 @@ public sealed partial class DockWindow : Window
         else if (view.Tucked < 1) Animate();
     }
 
-    // The items in order: the pins, then apps running that aren't pinned, then Downloads and the Recycle Bin.
+    // Out of the way while something fills the screen, and back when it doesn't.
+    private void WatchFullscreen()
+    {
+        var hide = settings.HideInFullscreen && settingsWindow is null && Native.FullscreenAppOpen(hwnd);
+        if (hide == hiddenForFullscreen) return;
+        hiddenForFullscreen = hide;
+        if (hide) AppWindow.Hide();
+        else AppWindow.Show(false);
+    }
+
+    // The items in order: Start, the pins, then apps running that aren't pinned, then Downloads and the Recycle Bin.
     private void Refresh()
     {
         var windows = tasks.Windows();
         var foreground = Native.Foreground();
         var next = new List<DockItem>();
+        if (settings.StartButton) next.Add(start);
         DockItem Find(string key) => items.FirstOrDefault(i => i.Key == key) ?? new DockItem { Kind = ItemKind.App, Key = key };
 
         foreach (var pin in settings.Pins)
@@ -248,6 +261,7 @@ public sealed partial class DockWindow : Window
         switch (item.Kind)
         {
             case ItemKind.Trash: Shell.OpenTrash(); break;
+            case ItemKind.Start: Shell.OpenStart(); break;
             case ItemKind.Downloads: Shell.OpenDownloads(); break;
             default:
                 // As on the Mac: a running app comes to the front, with its most recent window; one that isn't opens.
@@ -301,6 +315,11 @@ public sealed partial class DockWindow : Window
         {
             Add("Open Downloads", Shell.OpenDownloads);
         }
+        else if (item is { Kind: ItemKind.Start })
+        {
+            Add("Open Start", Shell.OpenStart);
+            Add("Hide the Start button", () => { settings.StartButton = false; Save(); });
+        }
         else
         {
             Add("Magnification", () => { settings.Magnify = !settings.Magnify; Save(); }, true, settings.Magnify);
@@ -316,6 +335,12 @@ public sealed partial class DockWindow : Window
             menu.Items.Add(new MenuFlyoutSeparator());
             Add("Dock Settings…", OpenSettings);
             Add("Quit Beanotch Dock", Quit);
+        }
+        // The dock's settings are a click away from any icon too, not only from its empty ends.
+        if (item is not null)
+        {
+            menu.Items.Add(new MenuFlyoutSeparator());
+            Add("Dock Settings…", OpenSettings);
         }
         menuOpen = true;
         menu.Closed += (_, _) => { menuOpen = false; pointerAway = DateTimeOffset.Now; Animate(); };
@@ -380,7 +405,7 @@ public sealed partial class DockWindow : Window
         view.Pointer = Along(e.GetPosition(root));
         Animate();
         var item = view.ItemAt(view.Pointer.Value);
-        if (!e.DataView.Contains(StandardDataFormats.StorageItems) || item is null || item.Kind is ItemKind.Downloads or ItemKind.Separator) return;
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems) || item is null || item.Kind is ItemKind.Downloads or ItemKind.Separator or ItemKind.Start) return;
         e.AcceptedOperation = item.Kind == ItemKind.Trash ? DataPackageOperation.Move : DataPackageOperation.Copy;
         e.DragUIOverride.Caption = item.Kind == ItemKind.Trash ? "Move to Recycle Bin" : "Open with " + item.Label;
     }

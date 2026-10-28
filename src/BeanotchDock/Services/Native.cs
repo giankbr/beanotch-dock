@@ -196,6 +196,38 @@ static partial class Native
         finally { CloseHandle(process); }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MonitorInfo { public int Size; public Rect Monitor, Work; public uint Flags; }
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetWindowRect(nint hwnd, out Rect rect);
+
+    [LibraryImport("user32.dll")]
+    private static partial nint MonitorFromWindow(nint hwnd, uint flags);
+
+    [LibraryImport("user32.dll", EntryPoint = "GetMonitorInfoW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetMonitorInfo(nint monitor, ref MonitorInfo info);
+
+    [LibraryImport("shell32.dll")]
+    private static partial int SHQueryUserNotificationState(out int state);
+
+    // Something fills the dock's screen: a game (Direct3D full screen), a slideshow, or any window covering the whole
+    // monitor, a video player in full screen say. The desktop doesn't count.
+    internal static bool FullscreenAppOpen(nint dock)
+    {
+        if (SHQueryUserNotificationState(out var state) == 0 && state is 3 or 4) return true; // D3D full screen, presentation mode
+        var front = GetForegroundWindow();
+        if (front == 0 || front == dock) return false;
+        if (ClassName(front) is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd") return false;
+        var monitor = MonitorFromWindow(front, 2); // nearest
+        if (monitor != MonitorFromWindow(dock, 2)) return false;
+        var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (!GetMonitorInfo(monitor, ref info) || !GetWindowRect(front, out var r)) return false;
+        return r.Left <= info.Monitor.Left && r.Top <= info.Monitor.Top && r.Right >= info.Monitor.Right && r.Bottom >= info.Monitor.Bottom;
+    }
+
     [LibraryImport("shell32.dll", EntryPoint = "ShellExecuteW", StringMarshalling = StringMarshalling.Utf16)]
     private static partial nint ShellExecute(nint hwnd, string? verb, string file, string? parameters, string? directory, int show);
 
