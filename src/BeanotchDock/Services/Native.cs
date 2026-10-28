@@ -116,6 +116,12 @@ static partial class Native
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool IsWindowVisible(nint hwnd);
 
+    [LibraryImport("user32.dll", EntryPoint = "GetPropW", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial nint GetProp(nint hwnd, string name);
+
+    [LibraryImport("user32.dll")]
+    internal static partial nint GetLastActivePopup(nint hwnd);
+
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool IsIconic(nint hwnd);

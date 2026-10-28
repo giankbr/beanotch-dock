@@ -35,8 +35,9 @@ static partial class Shell
         var list = windows.ToList();
         if (list.Count == 0) return;
         var front = list[0];
-        if (Native.IsIconic(front)) Native.ShowWindow(front, 9); // SW_RESTORE
-        Native.SetForegroundWindow(front);
+        if (Native.IsIconic(front)) Native.ShowWindow(front, 9); // SW_RESTORE, back to maximized if it was
+        // A dialog the app has open in front of the window gets the focus instead.
+        Native.SetForegroundWindow(Native.GetLastActivePopup(front) is var popup and not 0 ? popup : front);
     }
 
     // Asks each window to close, the way its own close button would.

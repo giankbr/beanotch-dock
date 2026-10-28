@@ -33,6 +33,11 @@ public sealed class Tasks(nint self)
         if (toolWindow && !appWindow) return false;
         if (noActivate && !appWindow) return false;
         if (Native.GetWindow(hwnd, 4) != 0 && !appWindow) return false; // GW_OWNER
+        // A tab an app took off the taskbar itself (ITaskbarList::DeleteTab).
+        if (Native.GetProp(hwnd, "ITaskList_Deleted") != 0) return false;
+        // The shell's own immersive windows (Start's frame, light-dismiss overlays, a frame with no app in it).
+        if ((ex & 0x100) == 0 && Native.ClassName(hwnd) is "ApplicationFrameWindow" or "Windows.UI.Core.CoreWindow"
+            or "StartMenuSizingFrame" or "Shell_LightDismissOverlay") return false;
         return Native.Title(hwnd).Length > 0;
     }
 
