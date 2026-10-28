@@ -57,6 +57,10 @@ foreach ($look in "light", "dark") {
   Look ($look -eq "dark")
   (New-Object -ComObject Shell.Application).MinimizeAll()
   Start-Sleep -Seconds 2
+  # The bare desktop first: the website sets the dock on it.
+  $dir = Join-Path $Out $look
+  New-Item -ItemType Directory -Force $dir | Out-Null
+  Shot (Join-Path $dir "wall.png")
   # A real window open, placed like someone's at work (so the dock shows an open app).
   Start-Process explorer.exe $env:USERPROFILE
   Start-Sleep -Seconds 4
@@ -64,8 +68,6 @@ foreach ($look in "light", "dark") {
   if ($explorer -ne [IntPtr]::Zero) { [Desk]::ShowWindow($explorer, 9) | Out-Null; [Desk]::MoveWindow($explorer, 380, 130, 1160, 660, $true) | Out-Null }
   Start-Sleep -Seconds 2
 
-  $dir = Join-Path $Out $look
-  New-Item -ItemType Directory -Force $dir | Out-Null
   $env:BEANOTCH_DOCK_SNAPSHOT = $dir
   $app = Start-Process $Exe -PassThru
   # The dock writes a marker as it reaches each state it wants photographed, and waits for the shot.

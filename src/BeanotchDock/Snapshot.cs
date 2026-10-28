@@ -19,10 +19,10 @@ public sealed partial class DockWindow
         ("Google Chrome", @"C:\Program Files\Google\Chrome\Application\chrome.exe", null),
         ("Firefox", @"C:\Program Files\Mozilla Firefox\firefox.exe", null),
         ("Visual Studio Code", @"C:\Program Files\Microsoft VS Code\Code.exe", null),
-        ("Notepad", @"C:\Windows\notepad.exe", null),
-        ("Paint", @"C:\Windows\System32\mspaint.exe", null),
-        ("Command Prompt", @"C:\Windows\System32\cmd.exe", null),
-        ("PowerShell", @"C:\Program Files\PowerShell\7\pwsh.exe", null),
+        ("Visual Studio", @"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\Common7\IDE\devenv.exe", null),
+        ("Android Studio", @"C:\Program Files\Android\Android Studio\bin\studio64.exe", null),
+        ("Terminal", "", "Microsoft.WindowsTerminal_8wekyb3d8bbwe!App"),
+        ("Settings", "", "windows.immersivecontrolpanel_cw5n1h2txyewy!microsoft.windows.immersivecontrolpanel"),
     ];
 
     private async Task SnapshotAsync(string dir)
@@ -37,6 +37,7 @@ public sealed partial class DockWindow
         {
             settings.Reset();
             Apply();
+            // The Store apps are kept by their IDs; the programs only if this machine has them.
             settings.Pins = DemoApps.Where(a => a.Path.Length == 0 || File.Exists(a.Path))
                 .Select(a => new Pin { Name = a.Name, Path = a.Path, Aumid = a.Aumid }).ToList();
             Refresh();
