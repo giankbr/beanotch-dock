@@ -31,11 +31,11 @@ public static class Desk {
 }
 "@
 
-function Shot($name) {
+function Shot($path) {
   $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
   $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
   [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-  $bmp.Save((Join-Path $Out "$name.png"))
+  $bmp.Save($path)
 }
 
 function Look($dark) {
@@ -64,9 +64,10 @@ foreach ($look in "light", "dark") {
   Start-Process explorer.exe $env:USERPROFILE
   Start-Sleep -Seconds 4
   $explorer = [Desk]::FindWindow("CabinetWClass", $null)
-  if ($explorer -ne [IntPtr]::Zero) { [Desk]::ShowWindow($explorer, 9) | Out-Null; [Desk]::MoveWindow($explorer, 260, 120, 1040, 640, $true) | Out-Null }
-  $notepad.Refresh()
-  if ($notepad.MainWindowHandle -ne [IntPtr]::Zero) { [Desk]::MoveWindow($notepad.MainWindowHandle, 1140, 240, 560, 420, $true) | Out-Null }
+  if ($explorer -ne [IntPtr]::Zero) { [Desk]::ShowWindow($explorer, 9) | Out-Null; [Desk]::MoveWindow($explorer, 230, 150, 900, 580, $true) | Out-Null }
+  # The Store Notepad's window belongs to another process than the one started, so it's found by its class.
+  $pad = [Desk]::FindWindow("Notepad", $null)
+  if ($pad -ne [IntPtr]::Zero) { [Desk]::ShowWindow($pad, 9) | Out-Null; [Desk]::MoveWindow($pad, 1060, 300, 620, 440, $true) | Out-Null }
   Start-Sleep -Seconds 2
 
   $dir = Join-Path $Out $look
@@ -77,11 +78,11 @@ foreach ($look in "light", "dark") {
   foreach ($state in "rest", "magnified", "menu", "settings", "left") {
     $ready = Join-Path $dir "$state.ready"
     for ($i = 0; $i -lt 60 -and -not (Test-Path $ready); $i++) { Start-Sleep -Milliseconds 500 }
-    if (Test-Path $ready) { Start-Sleep -Milliseconds 800; $script:Out = $dir; Shot $state; $script:Out = $Out; New-Item -ItemType File (Join-Path $dir "$state.done") | Out-Null }
+    if (Test-Path $ready) { Start-Sleep -Milliseconds 800; Shot (Join-Path $dir "$state.png"); New-Item -ItemType File (Join-Path $dir "$state.done") | Out-Null }
   }
   if (-not $app.WaitForExit(60000)) { Stop-Process $app -Force; "timed out" | Out-File (Join-Path $dir "timeout.txt") }
   "exit code: $($app.ExitCode)" | Out-File (Join-Path $dir "exit.txt")
-  Stop-Process $notepad -Force -ErrorAction SilentlyContinue
+  Get-Process notepad -ErrorAction SilentlyContinue | Stop-Process -Force
   if ($explorer -ne [IntPtr]::Zero) { [Desk]::ShowWindow($explorer, 0) | Out-Null }
   Get-Process explorer -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle } | ForEach-Object { $_.CloseMainWindow() | Out-Null }
 }

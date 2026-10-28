@@ -13,6 +13,21 @@ static partial class Shell
     public static string KeyFor(Pin pin) =>
         Key(pin.Aumid, pin.Path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) ? Properties.ShortcutTarget(pin.Path) ?? pin.Path : pin.Path);
 
+    private static readonly Dictionary<Pin, string?> targets = [];
+
+    // Whether an open window belongs to a kept app when their IDs don't line up: a shortcut to explorer.exe and an
+    // Explorer window with no ID of its own, or the classic Notepad kept and the Store one that runs.
+    public static bool Matches(Pin pin, TaskWindow window)
+    {
+        if (pin.Aumid is { } id && window.Aumid is { } other && string.Equals(id, other, StringComparison.OrdinalIgnoreCase)) return true;
+        if (window.Path is not { } path) return false;
+        if (!targets.TryGetValue(pin, out var target))
+            targets[pin] = target = pin.Path.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase) ? Properties.ShortcutTarget(pin.Path) : pin.Path;
+        if (string.IsNullOrEmpty(target)) return false;
+        return string.Equals(target, path, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Path.GetFileName(target), Path.GetFileName(path), StringComparison.OrdinalIgnoreCase);
+    }
+
     private static readonly Dictionary<string, string?> storeNames = [];
 
     // A packaged app's own title ("Calculator"); null for desktop apps, which name themselves.

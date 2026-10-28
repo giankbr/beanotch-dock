@@ -198,7 +198,7 @@ public sealed partial class DockWindow : Window
         }
         foreach (var group in windows.GroupBy(w => w.Key))
         {
-            var item = next.FirstOrDefault(i => i.Key == group.Key);
+            var item = next.FirstOrDefault(i => i.Key == group.Key) ?? next.FirstOrDefault(i => i.Pin is { } pin && Shell.Matches(pin, group.First()));
             if (item is null)
             {
                 if (!settings.ShowRunning) continue;

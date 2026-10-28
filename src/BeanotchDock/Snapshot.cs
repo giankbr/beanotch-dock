@@ -35,6 +35,8 @@ public sealed partial class DockWindow
         }
         try
         {
+            settings.Reset();
+            Apply();
             settings.Pins = DemoApps.Where(a => a.Path.Length == 0 || File.Exists(a.Path))
                 .Select(a => new Pin { Name = a.Name, Path = a.Path, Aumid = a.Aumid }).ToList();
             Refresh();
