@@ -26,7 +26,8 @@ public sealed partial class DockWindow : Window
     private readonly DockView view = new();
     private readonly Grid root = new();
     private readonly nint hwnd;
-    private readonly DispatcherQueueTimer poll, hideCheck;
+    private readonly DispatcherQueueTimer poll, hideCheck, updateTimer;
+    public Updater Updater { get; } = new();
     private readonly Tasks tasks;
     private List<DockItem> items = [];
     private readonly DockItem separator = new() { Kind = ItemKind.Separator, Key = "|" };
@@ -88,6 +89,13 @@ public sealed partial class DockWindow : Window
         hideCheck.Interval = TimeSpan.FromMilliseconds(80);
         hideCheck.Tick += (_, _) => WatchEdge();
         hideCheck.Start();
+
+        // New versions are looked for a minute after start and every six hours.
+        updateTimer = ui.CreateTimer();
+        updateTimer.Interval = TimeSpan.FromHours(6);
+        updateTimer.Tick += (_, _) => _ = CheckForUpdateAsync(false);
+        updateTimer.Start();
+        if (SnapshotFolder is null) Once(ui.CreateTimer(), TimeSpan.FromMinutes(1), () => _ = CheckForUpdateAsync(false));
 
         CompositionTarget.Rendering += (_, _) => { if (animating) Draw(); };
         Animate();
@@ -419,6 +427,24 @@ public sealed partial class DockWindow : Window
         var paths = (await e.DataView.GetStorageItemsAsync()).Select(f => f.Path).Where(p => p.Length > 0).ToList();
         if (item.Kind == ItemKind.Trash) Shell.Recycle(paths);
         else if (item.IsApp) Shell.OpenWith(item, paths);
+    }
+
+    private static void Once(DispatcherQueueTimer timer, TimeSpan after, Action act)
+    {
+        timer.Interval = after;
+        timer.IsRepeating = false;
+        timer.Tick += (_, _) => act();
+        timer.Start();
+    }
+
+    // Checks for a new version; with automatic updates on (or when asked), installs it straight away.
+    public async Task CheckForUpdateAsync(bool install)
+    {
+        await Updater.CheckAsync();
+        settingsWindow?.UpdatesChanged();
+        if (!Updater.UpdateAvailable || !(install || settings.AutoUpdate)) return;
+        if (await Updater.DownloadAndRunAsync()) Quit();
+        settingsWindow?.UpdatesChanged();
     }
 
     private void Quit()

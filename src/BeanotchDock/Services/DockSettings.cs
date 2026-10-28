@@ -54,6 +54,9 @@ public sealed class DockSettings
     public bool Trash { get; set; } = true;
     public bool Separator { get; set; } = true;
 
+    // New versions download and install themselves, with the dock back a few seconds later.
+    public bool AutoUpdate { get; set; } = true;
+
     // Windows' own taskbar slides away while the dock runs, and comes back when it quits.
     public bool HideTaskbar { get; set; } = true;
     // Whether the taskbar was already set to hide itself before the dock changed it, so quitting leaves it as found.

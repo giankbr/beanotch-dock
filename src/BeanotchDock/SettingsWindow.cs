@@ -14,6 +14,8 @@ public sealed partial class SettingsWindow : Window
     private readonly DockSettings settings;
     private readonly DockWindow dock;
     private readonly StackPanel page = new() { Spacing = 8, Padding = new Thickness(24, 16, 24, 28), MaxWidth = 720 };
+    private bool narrow;
+    private TextBlock? updateStatus;
 
     public SettingsWindow(DockSettings settings, DockWindow dock)
     {
@@ -24,6 +26,14 @@ public sealed partial class SettingsWindow : Window
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "BeanotchDock.ico"));
         AppWindow.Resize(new Windows.Graphics.SizeInt32(640, 820));
         Content = new ScrollViewer { Content = page, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        // Narrow windows put each control under its label instead of beside it.
+        page.SizeChanged += (_, e) =>
+        {
+            var now = e.NewSize.Width < 560;
+            if (now == narrow) return;
+            narrow = now;
+            Build();
+        };
         Build();
     }
 
@@ -88,12 +98,41 @@ public sealed partial class SettingsWindow : Window
                 Toggle(settings.HideTaskbar, v => { settings.HideTaskbar = v; dock.TaskbarChanged(); }, apply: false)),
             Row("Open at sign-in", "", Toggle(Startup.On, Startup.Set, apply: false)));
 
+        Section("Updates");
+        var check = new Button { Content = "Check now" };
+        check.Click += (_, _) => _ = dock.CheckForUpdateAsync(true);
+        updateStatus = new TextBlock();
+        Card(
+            Row("Update automatically", "New versions install themselves; the Dock is back a few seconds later",
+                Toggle(settings.AutoUpdate, v => settings.AutoUpdate = v, apply: false)),
+            Row($"Beanotch Dock {dock.Updater.Current}", UpdateCaption(), check));
+        UpdatesChanged();
+
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 12, 0, 0) };
         var reset = new Button { Content = "Reset to defaults" };
         reset.Click += (_, _) => { settings.Reset(); Changed(); Build(); };
         buttons.Children.Add(reset);
         page.Children.Add(buttons);
     }
+
+    private string UpdateCaption()
+    {
+        var u = dock.Updater;
+        return u.Installing ? $"Installing {u.Latest}…"
+            : u.Checking ? "Looking for a new version…"
+            : u.Failed ? "Couldn't reach GitHub"
+            : u.UpdateAvailable ? $"Version {u.Latest} is out"
+            : u.CheckedAt is not null ? "Up to date"
+            : "Looks for new versions every six hours";
+    }
+
+    // The version row's caption, kept current while the window is open.
+    public void UpdatesChanged() => DispatcherQueue.TryEnqueue(() =>
+    {
+        if (page.Children.OfType<Border>().LastOrDefault() is { Child: StackPanel rows } && rows.Children.LastOrDefault() is Grid row
+            && row.Children.OfType<StackPanel>().FirstOrDefault() is { } text && text.Children.Count > 1 && text.Children[1] is TextBlock caption)
+            caption.Text = UpdateCaption();
+    });
 
     // The kept apps, in order, to move up and down or take out.
     private void Pins()
@@ -147,20 +186,28 @@ public sealed partial class SettingsWindow : Window
 
     private static Brush? Resource(string key) => Application.Current.Resources.TryGetValue(key, out var value) ? value as Brush : null;
 
-    private static Grid Row(string title, string caption, FrameworkElement? control)
+    private Grid Row(string title, string caption, FrameworkElement? control)
     {
         var text = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Spacing = 2 };
         text.Children.Add(new TextBlock { Text = title, FontSize = 14, TextWrapping = TextWrapping.Wrap });
         if (caption.Length > 0)
             text.Children.Add(new TextBlock { Text = caption, FontSize = 12, Opacity = 0.65, TextWrapping = TextWrapping.Wrap, TextTrimming = TextTrimming.CharacterEllipsis });
-        var grid = new Grid { Padding = new Thickness(16, 12, 16, 12), ColumnSpacing = 16, MinHeight = 64 };
+        var grid = new Grid { Padding = new Thickness(16, 12, 16, 12), ColumnSpacing = 16, RowSpacing = 8, MinHeight = 64 };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        if (!narrow) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.Children.Add(text);
         if (control is not null)
         {
             control.VerticalAlignment = VerticalAlignment.Center;
-            Grid.SetColumn(control, 1);
+            if (narrow)
+            {
+                // Under the label: switches stay at the start, sliders and lists take the width.
+                control.HorizontalAlignment = control is ToggleSwitch ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                Grid.SetRow(control, 1);
+            }
+            else Grid.SetColumn(control, 1);
             grid.Children.Add(control);
         }
         return grid;
@@ -178,18 +225,22 @@ public sealed partial class SettingsWindow : Window
     }
 
     // A slider with its value beside it.
-    private StackPanel Slide(double min, double max, double step, double value, Action<double> set, Func<double, string> show)
+    private Grid Slide(double min, double max, double step, double value, Action<double> set, Func<double, string> show)
     {
         var readout = new TextBlock { Text = show(value), MinWidth = 52, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Opacity = 0.75 };
-        var slider = new Slider { Minimum = min, Maximum = max, StepFrequency = step, Value = Math.Clamp(value, min, max), Width = 200 };
+        var slider = new Slider { Minimum = min, Maximum = max, StepFrequency = step, Value = Math.Clamp(value, min, max), Width = narrow ? double.NaN : 200, MinWidth = 120 };
         slider.ValueChanged += (_, e) =>
         {
             set(e.NewValue);
             readout.Text = show(e.NewValue);
             Changed();
         };
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        // A grid rather than a stack, so on a narrow window the slider can take the room the readout leaves.
+        var row = new Grid { ColumnSpacing = 8 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = narrow ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.Children.Add(slider);
+        Grid.SetColumn(readout, 1);
         row.Children.Add(readout);
         return row;
     }
@@ -198,7 +249,7 @@ public sealed partial class SettingsWindow : Window
     private ComboBox Choose<T>(T value, Action<T> set) where T : struct, Enum
     {
         var values = Enum.GetValues<T>();
-        var box = new ComboBox { MinWidth = 160 };
+        var box = new ComboBox { MinWidth = narrow ? 0 : 160 };
         foreach (var v in values) box.Items.Add(v.ToString());
         box.SelectedIndex = Array.IndexOf(values, value);
         box.SelectionChanged += (_, _) =>

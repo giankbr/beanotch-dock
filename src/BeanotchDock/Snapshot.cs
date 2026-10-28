@@ -66,6 +66,13 @@ public sealed partial class DockWindow
                 shown.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(area.X + area.Width - 700, area.Y + 60, 640, area.Height - 260));
             }
             await Pose("settings");
+            // Narrow, to see the controls move under their labels.
+            if (settingsWindow is { } narrow)
+            {
+                var area = Microsoft.UI.Windowing.DisplayArea.Primary.WorkArea;
+                narrow.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(area.X + area.Width - 520, area.Y + 60, 440, area.Height - 260));
+            }
+            await Pose("narrow");
             settingsWindow?.Close();
             settings.Edge = DockEdge.Left;
             settings.Indicator = DockIndicator.Line;

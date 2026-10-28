@@ -68,7 +68,7 @@ foreach ($look in "light", "dark") {
   $env:BEANOTCH_DOCK_SNAPSHOT = $dir
   $app = Start-Process $Exe -PassThru
   # The dock writes a marker as it reaches each state it wants photographed, and waits for the shot.
-  foreach ($state in "rest", "magnified", "menu", "settings", "left") {
+  foreach ($state in "rest", "magnified", "menu", "settings", "narrow", "left") {
     $ready = Join-Path $dir "$state.ready"
     for ($i = 0; $i -lt 60 -and -not (Test-Path $ready); $i++) { Start-Sleep -Milliseconds 500 }
     if (Test-Path $ready) { Start-Sleep -Milliseconds 800; Shot (Join-Path $dir "$state.png"); New-Item -ItemType File (Join-Path $dir "$state.done") | Out-Null }
