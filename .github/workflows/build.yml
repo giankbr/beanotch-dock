@@ -1,0 +1,78 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  # Publishing a release builds the dock at that version and attaches its installers.
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Version
+        shell: pwsh
+        run: |
+          $version = if ("${{ github.event_name }}" -eq "release") { "${{ github.event.release.tag_name }}".TrimStart("v") }
+                     else { ([xml](Get-Content src/BeanotchDock/BeanotchDock.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1 }
+          "VERSION=$version" | Out-File -Append $env:GITHUB_ENV
+      - name: Publish
+        run: dotnet publish src/BeanotchDock/BeanotchDock.csproj -c Release -r win-${{ matrix.arch }} -p:Platform=${{ matrix.arch }} -p:Version=${{ env.VERSION }} -o out/BeanotchDock
+      # Runs the dock on the build machine in its snapshot mode and photographs the desktop with it on screen.
+      - name: Snapshots
+        if: matrix.arch == 'x64'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "snapshots"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $env:BEANOTCH_DOCK_SNAPSHOT = $dir
+          $app = Start-Process out/BeanotchDock/BeanotchDock.exe -PassThru
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save((Join-Path $dir "$name.png"))
+          }
+          # The dock writes a marker as it reaches each state it wants photographed, and waits for the shot.
+          foreach ($state in "rest", "magnified", "menu") {
+            $ready = Join-Path $dir "$state.ready"
+            for ($i = 0; $i -lt 60 -and -not (Test-Path $ready); $i++) { Start-Sleep -Milliseconds 500 }
+            if (Test-Path $ready) { Start-Sleep -Milliseconds 700; Shot $state; New-Item -ItemType File (Join-Path $dir "$state.done") | Out-Null }
+          }
+          if (-not $app.WaitForExit(60000)) { Stop-Process $app -Force; "timed out" | Out-File (Join-Path $dir "timeout.txt") }
+          "exit code: $($app.ExitCode)" | Out-File (Join-Path $dir "exit.txt")
+          Get-ChildItem $dir | Format-Table Name, Length
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.arch == 'x64'
+        with:
+          name: BeanotchDock-Snapshots
+          path: ${{ runner.temp }}/snapshots
+      - name: Installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc /DAppVersion=${{ env.VERSION }} /DArch=${{ matrix.arch }} installer/BeanotchDock.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BeanotchDock-Setup-${{ matrix.arch }}
+          path: out/BeanotchDock-Setup-${{ matrix.arch }}.exe
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "out/BeanotchDock-Setup-${{ matrix.arch }}.exe" --clobber --repo ${{ github.repository }}

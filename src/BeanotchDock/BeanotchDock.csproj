@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Beanotch Dock: a macOS-style dock for Windows, an unpackaged WinUI 3 app. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <RootNamespace>BeanotchDock</RootNamespace>
+    <AssemblyName>BeanotchDock</AssemblyName>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>None</WindowsPackageType>
+    <!-- The SDK only builds resources.pri for projects with XAML files; this one has none, but WinUI's own theme
+         resources still have to be merged into it or the controls can't start. Windows-only: the tool is too. -->
+    <AppxGeneratePriEnabled Condition="'$(OS)' == 'Windows_NT'">true</AppxGeneratePriEnabled>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\BeanotchDock.ico</ApplicationIcon>
+    <Version>0.1.0</Version>
+    <!-- Drops the parts of .NET and the Windows SDK projection the app never calls. -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Assets\BeanotchDock.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.250108002" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+  </ItemGroup>
+  <!-- Runtime pieces the app never loads: debugger support, Widgets, WebView2, phone controls, HTTP/3, and the
+       XAML strings for every language but English (the app itself is English only). -->
+  <Target Name="DropUnusedRuntime" AfterTargets="Publish">
+    <ItemGroup>
+      <Unused Include="$(PublishDir)Microsoft.DiaSymReader.Native.*.dll;$(PublishDir)mscordaccore*.dll;$(PublishDir)mscordbi.dll;$(PublishDir)createdump.exe;$(PublishDir)Microsoft.Windows.Widgets.dll;$(PublishDir)Microsoft.Web.WebView2.Core.dll;$(PublishDir)WebView2Loader.dll;$(PublishDir)Microsoft.UI.Xaml.Phone.dll;$(PublishDir)msquic.dll" />
+      <Folders Include="$([System.IO.Directory]::GetDirectories('$(PublishDir)'))" />
+      <Languages Include="@(Folders)" Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(Filename)%(Extension)', '^[a-z]{2,3}(-[A-Za-z]+)+$')) and '%(Filename)%(Extension)' != 'en-us' and '%(Filename)%(Extension)' != 'en-US'" />
+    </ItemGroup>
+    <Delete Files="@(Unused)" />
+    <RemoveDir Directories="@(Languages)" />
+  </Target>
+</Project>
