@@ -100,7 +100,6 @@ public sealed partial class SettingsWindow : Window
             Row("Pet", "A small pixel friend sits on the dock and goes for a walk now and then; tap it to make it hop",
                 Toggle(settings.Pet, v => { settings.Pet = v; Build(); })),
             settings.Pet ? Row("Which pet", "", ChooseText(Pets, Math.Max(0, Array.IndexOf(Pets, settings.PetKind)), i => settings.PetKind = Pets[i])) : null,
-            Row("Now Playing", "What's playing, its cover as the icon; click to play or pause", Toggle(settings.NowPlaying, v => settings.NowPlaying = v)),
             Row("Folders", settings.Folders.Count == 0 ? "Drop a folder on the dock's end, or right-click the dock › Add Folder"
                                                        : string.Join(", ", settings.Folders.Select(f => Path.GetFileName(f.TrimEnd('\\')))), null),
             Row("Recycle Bin", "At the very end; drop files on it to throw them away", Toggle(settings.Trash, v => settings.Trash = v)),

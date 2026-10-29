@@ -83,7 +83,6 @@ static partial class Icons
         ItemKind.Trash => TrashPath,
         ItemKind.Downloads => Shell.DownloadsFolder,
         ItemKind.Folder => item.Folder,
-        ItemKind.NowPlaying => null,
         _ => item.Pin is { Path.Length: > 0 } pin && (File.Exists(pin.Path) || Directory.Exists(pin.Path)) ? pin.Path
             : item.Source?.Path is { } path && !path.EndsWith("ApplicationFrameHost.exe", StringComparison.OrdinalIgnoreCase) && item.Source.Aumid is null ? path
             : (item.Pin?.Aumid ?? item.Source?.Aumid) is { } aumid ? "shell:AppsFolder\\" + aumid
@@ -170,31 +169,6 @@ static partial class Icons
         using (var stream = image.PixelBuffer.AsStream()) stream.Write(p.Data, 0, p.Data.Length);
         image.Invalidate();
         return image;
-    }
-
-    // Standing in for a song without a cover: a music note in Windows' own icon font, on a soft tile.
-    private static ImageSource? note;
-    public static ImageSource Note => note ??= ToImage(NotePixels());
-
-    private static Pixels NotePixels()
-    {
-        const int size = 256;
-        var px = new byte[size * size * 4];
-        for (var y = 0; y < size; y++)
-            for (var x = 0; x < size; x++)
-            {
-                var i = (y * size + x) * 4;
-                double dx = Math.Max(Math.Abs(x - 128) - 84, 0), dy = Math.Max(Math.Abs(y - 128) - 84, 0);
-                var inside = Math.Sqrt(dx * dx + dy * dy) < 28;
-                if (!inside) continue;
-                // A pink-to-orange tile with a white quaver: a stem, a flag and a round head.
-                var t = (x + y) / 512.0;
-                byte r = (byte)(255 - 20 * t), g = (byte)(90 + 60 * t), b = (byte)(120 - 70 * t);
-                var note = (x >= 140 && x < 152 && y >= 70 && y < 170) || (x >= 140 && x < 186 && y >= 70 && y < 84 + (x - 140) / 4)
-                           || Math.Pow(x - 128, 2) / 1.2 + Math.Pow(y - 172, 2) < 22 * 22;
-                (px[i], px[i + 1], px[i + 2], px[i + 3]) = note ? ((byte)255, (byte)255, (byte)255, (byte)255) : (b, g, r, (byte)255);
-            }
-        return new Pixels(px, size, size);
     }
 
     // Windows' four panes in its blue, drawn rather than borrowed: the shell has no picture of the Start button.

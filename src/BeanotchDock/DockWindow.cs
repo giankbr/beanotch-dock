@@ -39,8 +39,6 @@ public sealed partial class DockWindow : Window
     private readonly DockItem downloads = new() { Kind = ItemKind.Downloads, Key = "downloads", Label = "Downloads" };
     private readonly DockItem trash = new() { Kind = ItemKind.Trash, Key = "trash", Label = "Recycle Bin" };
     private readonly DockItem start = new() { Kind = ItemKind.Start, Key = "start", Label = "Start" };
-    private readonly DockItem playing = new() { Kind = ItemKind.NowPlaying, Key = "playing", Label = "Now Playing" };
-    private readonly NowPlaying media;
     private bool hiddenForFullscreen;
     private bool animating;
     private double scale = 1;
@@ -53,16 +51,6 @@ public sealed partial class DockWindow : Window
         hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var ui = DispatcherQueue.GetForCurrentThread();
         tasks = new Tasks(hwnd);
-        // The Now Playing tile follows the song: its cover is the icon.
-        media = new NowPlaying(ui);
-        media.Changed += () =>
-        {
-            playing.Icon = media.Cover ?? Icons.Note;
-            view.RefreshIcon(playing);
-            Refresh();
-            Animate();
-        };
-        if (SnapshotFolder is null) _ = media.StartAsync();
 
         root.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         root.Children.Add(view.View);
@@ -305,13 +293,6 @@ public sealed partial class DockWindow : Window
             }
         }
 
-        // What's playing, after the apps: its cover is the icon.
-        if (settings.NowPlaying && media.HasTrack)
-        {
-            playing.Label = media.Artist.Length > 0 ? $"{media.Title} — {media.Artist}" : media.Title;
-            next.Add(playing);
-        }
-
         var folders = settings.Folders.Where(Directory.Exists).ToList();
         if (settings.Separator && (settings.Downloads || settings.Trash || folders.Count > 0)) next.Add(separator);
         if (settings.Downloads) next.Add(downloads);
@@ -322,7 +303,7 @@ public sealed partial class DockWindow : Window
 
         var changed = next.Count != items.Count || next.Where((item, i) => items[i] != item).Any();
         items = next;
-        foreach (var item in items.Where(i => i.Icon is null && i.Kind is not (ItemKind.Separator or ItemKind.NowPlaying))) _ = LoadIconAsync(item);
+        foreach (var item in items.Where(i => i.Icon is null && i.Kind != ItemKind.Separator)) _ = LoadIconAsync(item);
         if (trash.Icon is not null && Shell.TrashFull != trashFull) { trashFull = Shell.TrashFull; _ = LoadIconAsync(trash); }
         if (changed)
         {
@@ -486,7 +467,6 @@ public sealed partial class DockWindow : Window
                 if (settings.DownloadsStack) ShowStack(point.Position, Shell.DownloadsFolder, "Downloads"); else Shell.OpenDownloads();
                 break;
             case ItemKind.Folder: ShowStack(point.Position, item.Folder!, item.Label); break;
-            case ItemKind.NowPlaying: media.TogglePlay(); break;
             default:
                 // As on the Mac: a running app comes to the front, with its most recent window; one that isn't opens.
                 if (item.Running && item.Active && settings.ClickMinimizes) Shell.Minimize(item.Windows);
@@ -560,14 +540,6 @@ public sealed partial class DockWindow : Window
         {
             Add("Open in File Explorer", () => Native.Open(folder));
             Add("Remove from Dock", () => { settings.Folders.Remove(folder); Save(); });
-        }
-        else if (item is { Kind: ItemKind.NowPlaying })
-        {
-            Add(media.Playing ? "Pause" : "Play", media.TogglePlay);
-            Add("Next", media.Next);
-            Add("Previous", media.Previous);
-            menu.Items.Add(new MenuFlyoutSeparator());
-            Add("Hide Now Playing", () => { settings.NowPlaying = false; Save(); });
         }
         else if (item is { Kind: ItemKind.Start })
         {
@@ -752,7 +724,7 @@ public sealed partial class DockWindow : Window
             e.DragUIOverride.Caption = "Keep folders in Dock";
             return;
         }
-        if (item.Kind is ItemKind.Start or ItemKind.NowPlaying) return;
+        if (item.Kind == ItemKind.Start) return;
         e.AcceptedOperation = item.Kind == ItemKind.Trash ? DataPackageOperation.Move : DataPackageOperation.Copy;
         e.DragUIOverride.Caption = item.Kind == ItemKind.Trash ? "Move to Recycle Bin" : "Open with " + item.Label;
     }
