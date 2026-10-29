@@ -98,7 +98,7 @@ public sealed partial class DockWindow
             // The Downloads stack, opened from its icon.
             if (items.FirstOrDefault(i => i.Kind == ItemKind.Downloads) is { } stack)
                 ShowStack(settings.Edge == DockEdge.Bottom ? new Point(stack.X + 20, view.View.ActualHeight - 30) : new Point(30, stack.X + 20),
-                          Shell.DownloadsFolder, "Downloads");
+                          Services.Shell.DownloadsFolder, "Downloads");
             await Pose("stack");
             OpenSettings();
             // In front of everything and clear of File Explorer, for the photo.
