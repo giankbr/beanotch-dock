@@ -108,6 +108,7 @@ public sealed partial class DockWindow : Window
         updateTimer.Tick += (_, _) => _ = CheckForUpdateAsync(false);
         updateTimer.Start();
         if (SnapshotFolder is null) Once(ui.CreateTimer(), TimeSpan.FromMinutes(1), () => _ = CheckForUpdateAsync(false));
+        if (SnapshotFolder is null) Announce(ui);
 
         CompositionTarget.Rendering += (_, _) => { if (animating) Draw(); };
         Animate();
@@ -634,11 +635,38 @@ public sealed partial class DockWindow : Window
         timer.Start();
     }
 
-    // Checks for a new version; with automatic updates on (or when asked), installs it straight away.
+    // Windows notifications for updates: after one just installed itself, say so once, with the release notes a
+    // click away; with automatic updates off, the buttons on a new version's notice install it.
+    private void Announce(DispatcherQueue ui)
+    {
+        Toast.Register(ui);
+        Toast.Invoked = action =>
+        {
+            if (action == "update") _ = CheckForUpdateAsync(true);
+            else if (action == "news")
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo($"https://github.com/giankbr/beanotch-dock/releases/tag/v{Updater.Current}") { UseShellExecute = true });
+        };
+        if (settings.LastVersion.Length > 0 && settings.LastVersion != Updater.Current)
+            Toast.Show($"Beanotch Dock updated to {Updater.Current}", "The dock updated itself. See what's new in this version.", "What's new", "news");
+        if (settings.LastVersion != Updater.Current)
+        {
+            settings.LastVersion = Updater.Current;
+            settings.Save();
+        }
+    }
+
+    // Checks for a new version; with automatic updates on (or when asked), installs it straight away. With them off, a
+    // new version is announced once, in a notification with an Update button.
     public async Task CheckForUpdateAsync(bool install)
     {
         await Updater.CheckAsync();
         settingsWindow?.UpdatesChanged();
+        if (Updater.UpdateAvailable && !install && !settings.AutoUpdate && settings.AnnouncedVersion != Updater.Latest)
+        {
+            settings.AnnouncedVersion = Updater.Latest!;
+            settings.Save();
+            Toast.Show($"Beanotch Dock {Updater.Latest} is out", "Update now, and the dock is back a few seconds later.", "Update", "update");
+        }
         if (!Updater.UpdateAvailable || !(install || settings.AutoUpdate)) return;
         if (await Updater.DownloadAndRunAsync()) Quit();
         settingsWindow?.UpdatesChanged();

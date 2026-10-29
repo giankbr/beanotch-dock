@@ -66,6 +66,10 @@ public sealed class DockSettings
 
     // New versions download and install themselves, with the dock back a few seconds later.
     public bool AutoUpdate { get; set; } = true;
+    // The version that last ran, so the first start after an update can say so, and the newest one announced while
+    // automatic updates are off, so each is announced once.
+    public string LastVersion { get; set; } = "";
+    public string AnnouncedVersion { get; set; } = "";
 
     // Windows' own taskbar slides away while the dock runs, and comes back when it quits.
     public bool HideTaskbar { get; set; } = true;
