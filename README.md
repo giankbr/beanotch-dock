@@ -28,6 +28,9 @@
 - **Your apps:** starts with the apps pinned to your taskbar; open apps show too, with a dot under each.
 - **Click like a Mac:** an open app comes to the front, restored if minimized; one that isn't open starts with a bounce.
 - **Start, Downloads and the Recycle Bin:** Start at the head; Downloads and the bin at the end. Drop files on the bin to throw them away, or on an app to open them there.
+- **Window previews:** rest the pointer on an open app to see its windows, live; click one to bring it forward.
+- **Any folder as a stack:** drop a folder on the dock's end, or right-click › **Add Folder to Dock**.
+- **A pet on your dock:** Beanotch's pixel friends sit on the bar, stroll along it and hop when an app opens.
 - **Mac tiles:** every app on a rounded square tinted from its own colours, or as Windows draws it.
 - **Your own icons:** right-click an app › Options › **Change Icon…** for any PNG, ICO or JPEG.
 - **Any edge:** bottom, left or right, with auto-hide. Icons shrink to fit when you keep more than the screen has room for.
@@ -77,7 +80,7 @@ C# and WinUI 3 on .NET 8, unpackaged, the UI written in code (no XAML).
 
 ```powershell
 dotnet publish src/BeanotchDock/BeanotchDock.csproj -c Release -r win-x64 -p:Platform=x64 -o out/BeanotchDock
-iscc /DAppVersion=0.6.1 /DArch=x64 installer\BeanotchDock.iss
+iscc /DAppVersion=0.7.0 /DArch=x64 installer\BeanotchDock.iss
 ```
 
 CI ([build.yml](.github/workflows/build.yml)) builds x64 and ARM64 on every push, photographs the dock on a Windows runner (light and dark, at rest, magnified, its menu and settings), and attaches both installers to each release.
