@@ -35,6 +35,8 @@ public sealed class DockView
     public double Spacing { get; set; } = 0.1;
     public double Margin { get; set; } = 8;
     public bool Labels { get; set; } = true;
+    // No label while the windows' previews show over the icon.
+    public bool Quiet { get; set; }
     public DockIndicator Indicator { get; set; } = DockIndicator.Dot;
     public bool Bounce { get; set; } = true;
     // Where the pointer is along the dock, in the window's pixels; null when it's elsewhere.
@@ -242,7 +244,7 @@ public sealed class DockView
         }
 
         if (Dragging is { } dragged) Hovered = dragged;
-        if ((Labels || Dragging is not null) && Hovered is { } hovered && Tucked < 0.5)
+        if ((Labels || Dragging is not null) && !Quiet && Hovered is { } hovered && Tucked < 0.5)
         {
             labelText.Text = hovered == Dragging && DragAway ? "Remove" : hovered.Label;
             label.Visibility = Visibility.Visible;
@@ -274,6 +276,10 @@ public sealed class DockView
 
     public DockItem? ItemAt(double p) =>
         items.FirstOrDefault(i => i.Kind != ItemKind.Separator && p >= i.X - Gap / 2 && p < i.X + Size(i, i.Scale) + Gap / 2);
+
+    // Along the dock, the middle of an icon as drawn; and how far above the window's bottom a magnified icon reaches.
+    public double CentreOf(DockItem item) => item.X + Size(item, item.Scale) / 2;
+    public double AboveIcons => Margin + BarThickness + S * (Magnification - 1) + 8;
 
     private double Size(DockItem item, double scale) => item.Kind == ItemKind.Separator ? Math.Max(Gap, 6) : S * scale;
 

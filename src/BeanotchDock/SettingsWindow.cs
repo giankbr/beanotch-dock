@@ -85,6 +85,8 @@ public sealed partial class SettingsWindow : Window
                 Toggle(settings.ClickMinimizes, v => settings.ClickMinimizes = v)),
             Row("Hide when an app is full screen", "Games, videos and slideshows keep the screen to themselves",
                 Toggle(settings.HideInFullscreen, v => settings.HideInFullscreen = v)),
+            Row("Window previews", "Rest the pointer on an open app to see its windows; click one to bring it forward",
+                Toggle(settings.WindowPreviews, v => settings.WindowPreviews = v)),
             Row("Show suggested and recent apps in Dock", "The last few apps you closed, after a divider",
                 Toggle(settings.ShowRecent, v => settings.ShowRecent = v)),
             Row("Keyboard shortcut", "Ctrl+Alt+D turns hiding on and off, as ⌥⌘D does on the Mac", null));

@@ -114,6 +114,12 @@ public sealed partial class DockWindow : Window
         hideCheck.Tick += (_, _) => WatchEdge();
         hideCheck.Start();
 
+        // Window previews: watched a few times a second while the pointer is about.
+        var previewTimer = ui.CreateTimer();
+        previewTimer.Interval = TimeSpan.FromMilliseconds(120);
+        previewTimer.Tick += (_, _) => WatchPreview();
+        previewTimer.Start();
+
         // New versions are looked for a minute after start and every six hours.
         updateTimer = ui.CreateTimer();
         updateTimer.Interval = TimeSpan.FromHours(6);
@@ -317,6 +323,49 @@ public sealed partial class DockWindow : Window
     }
 
     private bool trashFull;
+    private PreviewWindow? preview;
+    private DockItem? previewFor, hoverItem;
+    private DateTimeOffset hoverSince;
+
+    // After the pointer rests on an open app (at the bottom edge), its windows' pictures show above it, and stay while
+    // the pointer is on them or moves to another open app; anywhere else they go.
+    private void WatchPreview()
+    {
+        var hovered = view.Hovered;
+        if (hovered != hoverItem) { hoverItem = hovered; hoverSince = DateTimeOffset.Now; }
+        var settled = previewFor is not null || DateTimeOffset.Now - hoverSince > TimeSpan.FromMilliseconds(550);
+        var wanted = settings.WindowPreviews && settings.Edge == DockEdge.Bottom && !dragging && !menuOpen && view.Tucked == 0
+                     && hovered is { IsApp: true, Running: true, Recent: false } && settled;
+        if (wanted && hovered != previewFor)
+        {
+            ShowPreview(hovered!);
+            return;
+        }
+        if (wanted || previewFor is null || preview is null) return;
+        var b = preview.Bounds;
+        if (Native.Cursor() is { } c && c.X >= b.X - 12 && c.X <= b.X + b.Width + 12 && c.Y >= b.Y - 12 && c.Y <= b.Y + b.Height + 16) return;
+        HidePreview();
+    }
+
+    private void ShowPreview(DockItem item)
+    {
+        preview ??= new PreviewWindow { Picked = w => { Shell.Activate([w]); HidePreview(); } };
+        var at = AppWindow.Position;
+        var centre = at.X + (int)Math.Round(view.CentreOf(item) * scale);
+        var bottom = at.Y + (int)Math.Round((view.View.ActualHeight - view.AboveIcons) * scale);
+        preview.Show(item.Windows, centre, bottom, scale, Dark);
+        previewFor = item;
+        view.Quiet = true;
+        Animate();
+    }
+
+    private void HidePreview()
+    {
+        preview?.Hide();
+        previewFor = null;
+        view.Quiet = false;
+        Animate();
+    }
     private DockIconStyle? iconStyle;
     private bool? tilesDark;
 

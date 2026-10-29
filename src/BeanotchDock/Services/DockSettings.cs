@@ -51,6 +51,8 @@ public sealed class DockSettings
     public bool ClickMinimizes { get; set; }
     // Out of the way while a game, a video or a slideshow fills the screen.
     public bool HideInFullscreen { get; set; } = true;
+    // Live pictures of an app's windows above its icon when the pointer rests on it.
+    public bool WindowPreviews { get; set; } = true;
 
     // Items
     // Windows' Start button at the head of the dock, since the taskbar that holds it is out of sight.

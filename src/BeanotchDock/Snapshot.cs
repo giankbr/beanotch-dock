@@ -81,6 +81,16 @@ public sealed partial class DockWindow
             Animate();
             await Pose("magnified");
             await Render(dir, "dock-magnified");
+            // An open app's windows, previewed above it.
+            if (items.FirstOrDefault(i => i is { IsApp: true, Running: true, Recent: false }) is { } open)
+            {
+                view.Pointer = open.X + 20;
+                Animate();
+                await Task.Delay(800);
+                ShowPreview(open);
+            }
+            await Pose("preview");
+            HidePreview();
             view.Pointer = null;
             Animate();
             ShowMenu(new Point(40, view.View.ActualHeight - 30));
