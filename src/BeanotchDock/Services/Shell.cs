@@ -148,11 +148,14 @@ static partial class Shell
     public static void OpenDownloads() => Native.Open(DownloadsFolder);
 
     // The newest files and folders in Downloads, newest first.
-    public static List<string> NewestDownloads(int count)
+    public static List<string> NewestDownloads(int count) => Newest(DownloadsFolder, count);
+
+    // A folder's newest files and folders, for its stack; a download still in progress isn't one yet.
+    public static List<string> Newest(string folder, int count)
     {
         try
         {
-            return new DirectoryInfo(DownloadsFolder).EnumerateFileSystemInfos()
+            return new DirectoryInfo(folder).EnumerateFileSystemInfos()
                 .Where(f => !f.Attributes.HasFlag(FileAttributes.Hidden) && !f.Name.EndsWith(".crdownload") && !f.Name.EndsWith(".part"))
                 .OrderByDescending(f => f.LastWriteTimeUtc).Take(count).Select(f => f.FullName).ToList();
         }

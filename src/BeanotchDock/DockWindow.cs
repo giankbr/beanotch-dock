@@ -39,6 +39,8 @@ public sealed partial class DockWindow : Window
     private readonly DockItem downloads = new() { Kind = ItemKind.Downloads, Key = "downloads", Label = "Downloads" };
     private readonly DockItem trash = new() { Kind = ItemKind.Trash, Key = "trash", Label = "Recycle Bin" };
     private readonly DockItem start = new() { Kind = ItemKind.Start, Key = "start", Label = "Start" };
+    private readonly DockItem playing = new() { Kind = ItemKind.NowPlaying, Key = "playing", Label = "Now Playing" };
+    private readonly NowPlaying media;
     private bool hiddenForFullscreen;
     private bool animating;
     private double scale = 1;
@@ -51,6 +53,16 @@ public sealed partial class DockWindow : Window
         hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var ui = DispatcherQueue.GetForCurrentThread();
         tasks = new Tasks(hwnd);
+        // The Now Playing tile follows the song: its cover is the icon.
+        media = new NowPlaying(ui);
+        media.Changed += () =>
+        {
+            playing.Icon = media.Cover ?? Icons.Note;
+            view.RefreshIcon(playing);
+            Refresh();
+            Animate();
+        };
+        if (SnapshotFolder is null) _ = media.StartAsync();
 
         root.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
         root.Children.Add(view.View);
@@ -278,13 +290,24 @@ public sealed partial class DockWindow : Window
             }
         }
 
-        if (settings.Separator && (settings.Downloads || settings.Trash)) next.Add(separator);
+        // What's playing, after the apps: its cover is the icon.
+        if (settings.NowPlaying && media.HasTrack)
+        {
+            playing.Label = media.Artist.Length > 0 ? $"{media.Title} — {media.Artist}" : media.Title;
+            next.Add(playing);
+        }
+
+        var folders = settings.Folders.Where(Directory.Exists).ToList();
+        if (settings.Separator && (settings.Downloads || settings.Trash || folders.Count > 0)) next.Add(separator);
         if (settings.Downloads) next.Add(downloads);
+        foreach (var folder in folders)
+            next.Add(items.FirstOrDefault(i => i.Key == "folder:" + folder)
+                     ?? new DockItem { Kind = ItemKind.Folder, Key = "folder:" + folder, Folder = folder, Label = Path.GetFileName(folder.TrimEnd('\\')) is { Length: > 0 } n ? n : folder });
         if (settings.Trash) next.Add(trash);
 
         var changed = next.Count != items.Count || next.Where((item, i) => items[i] != item).Any();
         items = next;
-        foreach (var item in items.Where(i => i.Icon is null && i.Kind != ItemKind.Separator)) _ = LoadIconAsync(item);
+        foreach (var item in items.Where(i => i.Icon is null && i.Kind is not (ItemKind.Separator or ItemKind.NowPlaying))) _ = LoadIconAsync(item);
         if (trash.Icon is not null && Shell.TrashFull != trashFull) { trashFull = Shell.TrashFull; _ = LoadIconAsync(trash); }
         if (changed)
         {
@@ -400,8 +423,10 @@ public sealed partial class DockWindow : Window
             case ItemKind.Trash: Shell.OpenTrash(); break;
             case ItemKind.Start: Shell.OpenStart(); break;
             case ItemKind.Downloads:
-                if (settings.DownloadsStack) ShowStack(point.Position); else Shell.OpenDownloads();
+                if (settings.DownloadsStack) ShowStack(point.Position, Shell.DownloadsFolder, "Downloads"); else Shell.OpenDownloads();
                 break;
+            case ItemKind.Folder: ShowStack(point.Position, item.Folder!, item.Label); break;
+            case ItemKind.NowPlaying: media.TogglePlay(); break;
             default:
                 // As on the Mac: a running app comes to the front, with its most recent window; one that isn't opens.
                 if (item.Running && item.Active && settings.ClickMinimizes) Shell.Minimize(item.Windows);
@@ -471,6 +496,19 @@ public sealed partial class DockWindow : Window
             Add("Display as Stack", () => { settings.DownloadsStack = true; settings.Save(); }, true, settings.DownloadsStack);
             Add("Display as Folder", () => { settings.DownloadsStack = false; settings.Save(); }, true, !settings.DownloadsStack);
         }
+        else if (item is { Kind: ItemKind.Folder, Folder: { } folder })
+        {
+            Add("Open in File Explorer", () => Native.Open(folder));
+            Add("Remove from Dock", () => { settings.Folders.Remove(folder); Save(); });
+        }
+        else if (item is { Kind: ItemKind.NowPlaying })
+        {
+            Add(media.Playing ? "Pause" : "Play", media.TogglePlay);
+            Add("Next", media.Next);
+            Add("Previous", media.Previous);
+            menu.Items.Add(new MenuFlyoutSeparator());
+            Add("Hide Now Playing", () => { settings.NowPlaying = false; Save(); });
+        }
         else if (item is { Kind: ItemKind.Start })
         {
             Add("Open Start", Shell.OpenStart);
@@ -488,6 +526,7 @@ public sealed partial class DockWindow : Window
                 position.Items.Add(entry);
             }
             menu.Items.Add(position);
+            Add("Add Folder to Dock…", () => _ = AddFolderAsync());
             menu.Items.Add(new MenuFlyoutSeparator());
             Add("Dock Settings…", OpenSettings);
             Add("Quit Beanotch Dock", Quit);
@@ -574,10 +613,28 @@ public sealed partial class DockWindow : Window
         Refresh();
     }
 
-    // Downloads as a stack: its newest files in a grid above the dock, as on the Mac.
-    private void ShowStack(Point at)
+    // A folder kept in the dock, picked from the file dialog.
+    private async Task AddFolderAsync()
     {
-        var files = Shell.NewestDownloads(12);
+        var picker = new Windows.Storage.Pickers.FolderPicker { SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary };
+        picker.FileTypeFilter.Add("*");
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        if (await picker.PickSingleFolderAsync() is not { } folder) return;
+        AddFolders([folder.Path]);
+    }
+
+    private void AddFolders(IEnumerable<string> paths)
+    {
+        var added = false;
+        foreach (var path in paths.Where(Directory.Exists))
+            if (!settings.Folders.Contains(path, StringComparer.OrdinalIgnoreCase)) { settings.Folders.Add(path); added = true; }
+        if (added) Save();
+    }
+
+    // A folder as a stack: its newest files in a grid above the dock, as on the Mac.
+    private void ShowStack(Point at, string folder, string title)
+    {
+        var files = Shell.Newest(folder, 12);
         var grid = new VariableSizedWrapGrid { Orientation = Orientation.Horizontal, MaximumRowsOrColumns = 4, ItemWidth = 96, ItemHeight = 104 };
         // In its own window: the dock's is cut to the bar's shape and would hide most of it.
         var flyout = new Flyout { ShouldConstrainToRootBounds = false };
@@ -592,11 +649,11 @@ public sealed partial class DockWindow : Window
             grid.Children.Add(button);
         }
         var panel = new StackPanel { Spacing = 10, Width = 400 };
-        panel.Children.Add(new TextBlock { Text = "Downloads", FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
-        if (files.Count == 0) panel.Children.Add(new TextBlock { Text = "Nothing downloaded yet", Opacity = 0.6 });
+        panel.Children.Add(new TextBlock { Text = title, FontSize = 15, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        if (files.Count == 0) panel.Children.Add(new TextBlock { Text = "Nothing here yet", Opacity = 0.6 });
         else panel.Children.Add(grid);
         var open = new HyperlinkButton { Content = "Open in File Explorer" };
-        open.Click += (_, _) => { flyout.Hide(); Shell.OpenDownloads(); };
+        open.Click += (_, _) => { flyout.Hide(); Native.Open(folder); };
         panel.Children.Add(open);
         flyout.Content = panel;
         menuOpen = true;
@@ -627,7 +684,15 @@ public sealed partial class DockWindow : Window
         view.Pointer = Along(e.GetPosition(root));
         Animate();
         var item = view.ItemAt(view.Pointer.Value);
-        if (!e.DataView.Contains(StandardDataFormats.StorageItems) || item is null || item.Kind is ItemKind.Downloads or ItemKind.Separator or ItemKind.Start) return;
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+        // Over the dock's own end (a divider, Downloads, a folder or the bar between): keep a dropped folder as a stack.
+        if (item is null or { Kind: ItemKind.Separator or ItemKind.Downloads or ItemKind.Folder })
+        {
+            e.AcceptedOperation = DataPackageOperation.Link;
+            e.DragUIOverride.Caption = "Keep folders in Dock";
+            return;
+        }
+        if (item.Kind is ItemKind.Start or ItemKind.NowPlaying) return;
         e.AcceptedOperation = item.Kind == ItemKind.Trash ? DataPackageOperation.Move : DataPackageOperation.Copy;
         e.DragUIOverride.Caption = item.Kind == ItemKind.Trash ? "Move to Recycle Bin" : "Open with " + item.Label;
     }
@@ -635,8 +700,13 @@ public sealed partial class DockWindow : Window
     private async void OnDrop(object sender, DragEventArgs e)
     {
         var item = view.ItemAt(Along(e.GetPosition(root)));
-        if (item is null || !e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
         var paths = (await e.DataView.GetStorageItemsAsync()).Select(f => f.Path).Where(p => p.Length > 0).ToList();
+        if (item is null or { Kind: ItemKind.Separator or ItemKind.Downloads or ItemKind.Folder })
+        {
+            AddFolders(paths);
+            return;
+        }
         if (item.Kind == ItemKind.Trash) Shell.Recycle(paths);
         else if (item.IsApp) Shell.OpenWith(item, paths);
     }

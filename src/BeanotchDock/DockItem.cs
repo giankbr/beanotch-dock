@@ -2,10 +2,10 @@ using Microsoft.UI.Xaml.Media;
 
 namespace BeanotchDock;
 
-public enum ItemKind { App, Separator, Downloads, Trash, Start }
+public enum ItemKind { App, Separator, Downloads, Trash, Start, Folder, NowPlaying }
 
-// One thing in the dock: the Start button, an app (kept, running, or both), the line before the stacks, Downloads, or
-// the Recycle Bin.
+// One thing in the dock: the Start button, an app (kept, running, or both), what's playing, the line before the stacks,
+// Downloads or another folder kept as a stack, or the Recycle Bin.
 public sealed class DockItem
 {
     public ItemKind Kind { get; init; }
@@ -13,6 +13,8 @@ public sealed class DockItem
     public string Key { get; init; } = "";
     public string Label { get; set; } = "";
     public Pin? Pin { get; set; }
+    // A folder kept in the dock, shown as a stack of its newest files.
+    public string? Folder { get; init; }
     public ImageSource? Icon { get; set; }
     public List<nint> Windows { get; } = [];
     // The front window it was last seen with: where its program and ID come from when it isn't pinned.

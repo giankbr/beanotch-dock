@@ -95,6 +95,9 @@ public sealed partial class SettingsWindow : Window
             Row("Downloads", "Your Downloads folder, at the end", Toggle(settings.Downloads, v => settings.Downloads = v)),
             settings.Downloads ? Row("Display Downloads as", "A stack of the newest files, or the folder itself",
                 ChooseText(["Stack", "Folder"], settings.DownloadsStack ? 0 : 1, i => settings.DownloadsStack = i == 0)) : null,
+            Row("Now Playing", "What's playing, its cover as the icon; click to play or pause", Toggle(settings.NowPlaying, v => settings.NowPlaying = v)),
+            Row("Folders", settings.Folders.Count == 0 ? "Drop a folder on the dock's end, or right-click the dock › Add Folder"
+                                                       : string.Join(", ", settings.Folders.Select(f => Path.GetFileName(f.TrimEnd('\\')))), null),
             Row("Recycle Bin", "At the very end; drop files on it to throw them away", Toggle(settings.Trash, v => settings.Trash = v)),
             Row("Divider", "The line before Downloads and the Recycle Bin", Toggle(settings.Separator, v => settings.Separator = v)));
         Pins();

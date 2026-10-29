@@ -62,6 +62,10 @@ public sealed class DockSettings
     public bool ShowRecent { get; set; } = true;
     public List<Pin> Recent { get; set; } = [];
     public bool Trash { get; set; } = true;
+    // Folders kept in the dock as stacks, after Downloads, as on the Mac.
+    public List<string> Folders { get; set; } = [];
+    // A tile for what's playing, its cover as the icon: a click plays or pauses.
+    public bool NowPlaying { get; set; } = true;
     public bool Separator { get; set; } = true;
 
     // New versions download and install themselves, with the dock back a few seconds later.
