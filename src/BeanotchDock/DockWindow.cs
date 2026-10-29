@@ -84,7 +84,7 @@ public sealed partial class DockWindow : Window
         AppWindow.Title = "Beanotch Dock";
         AppWindow.Closing += (_, _) => Quit();
 
-        new UISettings().ColorValuesChanged += (_, _) => ui.TryEnqueue(() => view.Restyle(Dark));
+        new UISettings().ColorValuesChanged += (_, _) => ui.TryEnqueue(Restyle);
         Apply();
 
         if (!settings.Imported) ImportTaskbarPins();
@@ -133,7 +133,7 @@ public sealed partial class DockWindow : Window
         view.Labels = settings.Labels;
         view.Indicator = settings.Indicator;
         view.Bounce = settings.Bounce;
-        view.Restyle(Dark);
+        Restyle();
         if (iconStyle != settings.IconStyle)
         {
             iconStyle = settings.IconStyle;
@@ -295,6 +295,20 @@ public sealed partial class DockWindow : Window
 
     private bool trashFull;
     private DockIconStyle? iconStyle;
+    private bool? tilesDark;
+
+    // The glass in the light or dark look, and the tiles with it: pale in the light look, deep in the dark one.
+    private void Restyle()
+    {
+        var dark = Dark;
+        view.Restyle(dark);
+        if (tilesDark == dark) return;
+        var first = tilesDark is null;
+        tilesDark = dark;
+        if (first || settings.IconStyle != DockIconStyle.Tiles) return;
+        ReloadIcons();
+        Refresh();
+    }
 
     // Every icon drawn again on the next refresh, after the style changes.
     private void ReloadIcons()
@@ -307,7 +321,7 @@ public sealed partial class DockWindow : Window
 
     private async Task LoadIconAsync(DockItem item)
     {
-        var icon = await Icons.ForAsync(item, settings.CustomIcons.GetValueOrDefault(IconKey(item)), settings.IconStyle == DockIconStyle.Tiles);
+        var icon = await Icons.ForAsync(item, settings.CustomIcons.GetValueOrDefault(IconKey(item)), settings.IconStyle == DockIconStyle.Tiles, Dark);
         if (icon is null) return;
         item.Icon = icon;
         view.RefreshIcon(item);

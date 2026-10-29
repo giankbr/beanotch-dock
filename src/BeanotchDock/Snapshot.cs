@@ -62,6 +62,12 @@ public sealed partial class DockWindow
             await Task.Delay(800);
             await Render(dir, "dock-tiles-magnified");
             view.Pointer = null;
+            // The tiles in the dark look: deep instead of pale.
+            settings.Theme = DockTheme.Dark;
+            Apply();
+            await Task.Delay(1500);
+            await Render(dir, "dock-tiles-darklook");
+            settings.Theme = DockTheme.Auto;
             settings.CustomIcons.Clear();
             settings.IconStyle = DockIconStyle.Original;
             Apply();

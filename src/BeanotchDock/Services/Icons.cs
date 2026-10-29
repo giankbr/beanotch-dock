@@ -93,19 +93,19 @@ static partial class Icons
 
     // An item's icon: a picture you chose for it, else the shell's. Apps (and Start) go on a tile when tiles are on;
     // Downloads and the Recycle Bin keep their own shapes, as on the Mac.
-    public static async Task<ImageSource?> ForAsync(DockItem item, string? custom = null, bool tile = false)
+    public static async Task<ImageSource?> ForAsync(DockItem item, string? custom = null, bool tile = false, bool dark = false)
     {
         tile &= item.Kind is ItemKind.App or ItemKind.Start;
         var source = custom is not null ? "file:" + custom : item.Kind == ItemKind.Start ? "start" : Source(item);
         if (source is null) return null;
-        var key = tile ? source + "|tile" : source;
+        var key = tile ? source + (dark ? "|tile-dark" : "|tile") : source;
         // The Recycle Bin's picture changes with what's in it, so it's never kept.
         if (item.Kind != ItemKind.Trash && Cache.TryGetValue(key, out var known)) return known;
         var pixels = custom is not null ? await DecodeAsync(custom) : item.Kind == ItemKind.Start ? StartLogo() : Pixel(source);
         // A chosen picture that's gone or unreadable: the usual icon instead.
-        if (pixels is null && custom is not null) return await ForAsync(item, null, tile);
+        if (pixels is null && custom is not null) return await ForAsync(item, null, tile, dark);
         if (pixels is not { } p) return null;
-        var image = ToImage(tile ? Tile(p) : p);
+        var image = ToImage(tile ? Tile(p, dark) : p);
         if (item.Kind != ItemKind.Trash) Cache[key] = image;
         return image;
     }
@@ -194,9 +194,9 @@ static partial class Icons
     }
 
     // A Mac-style tile: a rounded square (a superellipse, the Mac's shape) in a pale tint of the icon's own colour,
-    // lit from the top, with a soft shadow under it and the icon set in the middle. An icon that already fills a
-    // square, like a Store app's, is clipped to the shape instead of set on one.
-    private static Pixels Tile(Pixels icon)
+    // or a deep one in the dark look, lit from the top, with a soft shadow under it and the icon set in the middle.
+    // An icon that already fills a square, like a Store app's, is clipped to the shape instead of set on one.
+    private static Pixels Tile(Pixels icon, bool dark)
     {
         const int size = 256;
         const double half = 104, cx = 128, cy = 124, n = 5;
@@ -243,12 +243,23 @@ static partial class Icons
                 double ob = 0, og = 0, or = 0, oa = 0;
                 if (cover > 0)
                 {
-                    // Lighter at the top, a touch deeper at the bottom.
+                    // Lighter at the top, a touch deeper at the bottom: near white in the light look, near black with a
+                    // hint of the icon's colour in the dark one.
                     var t = (py - (cy - half)) / (half * 2);
-                    var mix = 0.9 - 0.08 * t;
-                    double tb = (b * (1 - mix) + mix) * 255, tg = (g * (1 - mix) + mix) * 255, tr = (r * (1 - mix) + mix) * 255;
-                    // A faint rim just inside the edge.
-                    if ((1 - d) * half < 1.5) (tb, tg, tr) = (tb * 0.9, tg * 0.9, tr * 0.9);
+                    double tb, tg, tr;
+                    if (dark)
+                    {
+                        var lift = 0.2 - 0.07 * t;
+                        (tb, tg, tr) = ((b * 0.16 + lift) * 255, (g * 0.16 + lift) * 255, (r * 0.16 + lift) * 255);
+                    }
+                    else
+                    {
+                        var mix = 0.9 - 0.08 * t;
+                        (tb, tg, tr) = ((b * (1 - mix) + mix) * 255, (g * (1 - mix) + mix) * 255, (r * (1 - mix) + mix) * 255);
+                    }
+                    // A faint rim just inside the edge: darker on a light tile, lighter on a dark one.
+                    if ((1 - d) * half < 1.5)
+                        (tb, tg, tr) = dark ? (tb + 22, tg + 22, tr + 22) : (tb * 0.9, tg * 0.9, tr * 0.9);
                     var (sb, sg, sr, sa) = Sample(icon, minX + (px - left) / fit - 0.5, minY + (py - top) / fit - 0.5);
                     (ob, og, or) = (sb + tb * (1 - sa / 255), sg + tg * (1 - sa / 255), sr + tr * (1 - sa / 255));
                     (ob, og, or, oa) = (ob * cover, og * cover, or * cover, 255 * cover);
