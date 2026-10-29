@@ -77,7 +77,7 @@ C# and WinUI 3 on .NET 8, unpackaged, the UI written in code (no XAML).
 
 ```powershell
 dotnet publish src/BeanotchDock/BeanotchDock.csproj -c Release -r win-x64 -p:Platform=x64 -o out/BeanotchDock
-iscc /DAppVersion=0.6.0 /DArch=x64 installer\BeanotchDock.iss
+iscc /DAppVersion=0.6.1 /DArch=x64 installer\BeanotchDock.iss
 ```
 
 CI ([build.yml](.github/workflows/build.yml)) builds x64 and ARM64 on every push, photographs the dock on a Windows runner (light and dark, at rest, magnified, its menu and settings), and attaches both installers to each release.
