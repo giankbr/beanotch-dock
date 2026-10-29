@@ -114,6 +114,13 @@ public sealed partial class DockWindow : Window
         hideCheck.Tick += (_, _) => WatchEdge();
         hideCheck.Start();
 
+        // The pet strolls along the bar now and then.
+        view.WantFrame = Animate;
+        var petTimer = ui.CreateTimer();
+        petTimer.Interval = TimeSpan.FromSeconds(23);
+        petTimer.Tick += (_, _) => { if (Random.Shared.Next(3) > 0) view.Walk(); };
+        petTimer.Start();
+
         // Window previews: watched a few times a second while the pointer is about.
         var previewTimer = ui.CreateTimer();
         previewTimer.Interval = TimeSpan.FromMilliseconds(120);
@@ -151,6 +158,8 @@ public sealed partial class DockWindow : Window
         view.Labels = settings.Labels;
         view.Indicator = settings.Indicator;
         view.Bounce = settings.Bounce;
+        view.PetOn = settings.Pet;
+        view.SetPetKind(settings.PetKind);
         Restyle();
         if (iconStyle != settings.IconStyle)
         {
@@ -466,6 +475,8 @@ public sealed partial class DockWindow : Window
             return;
         }
         if (point.Properties.PointerUpdateKind != PointerUpdateKind.LeftButtonReleased) return;
+        // A tap on the pet makes it hop, and opens nothing.
+        if (view.OnPet(point.Position)) { view.Hop(); return; }
         if (view.ItemAt(Along(point.Position)) is not { } item) return;
         switch (item.Kind)
         {
@@ -480,7 +491,7 @@ public sealed partial class DockWindow : Window
                 // As on the Mac: a running app comes to the front, with its most recent window; one that isn't opens.
                 if (item.Running && item.Active && settings.ClickMinimizes) Shell.Minimize(item.Windows);
                 else if (item.Running) Shell.Activate(item.Windows);
-                else if (item.Pin is { } pin && Shell.Launch(pin)) { item.LaunchedAt = DateTimeOffset.Now; Animate(); }
+                else if (item.Pin is { } pin && Shell.Launch(pin)) { item.LaunchedAt = DateTimeOffset.Now; view.Hop(); Animate(); }
                 break;
         }
     }

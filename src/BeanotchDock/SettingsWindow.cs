@@ -97,6 +97,9 @@ public sealed partial class SettingsWindow : Window
             Row("Downloads", "Your Downloads folder, at the end", Toggle(settings.Downloads, v => settings.Downloads = v)),
             settings.Downloads ? Row("Display Downloads as", "A stack of the newest files, or the folder itself",
                 ChooseText(["Stack", "Folder"], settings.DownloadsStack ? 0 : 1, i => settings.DownloadsStack = i == 0)) : null,
+            Row("Pet", "A small pixel friend sits on the dock and goes for a walk now and then; tap it to make it hop",
+                Toggle(settings.Pet, v => { settings.Pet = v; Build(); })),
+            settings.Pet ? Row("Which pet", "", ChooseText(Pets, Math.Max(0, Array.IndexOf(Pets, settings.PetKind)), i => settings.PetKind = Pets[i])) : null,
             Row("Now Playing", "What's playing, its cover as the icon; click to play or pause", Toggle(settings.NowPlaying, v => settings.NowPlaying = v)),
             Row("Folders", settings.Folders.Count == 0 ? "Drop a folder on the dock's end, or right-click the dock › Add Folder"
                                                        : string.Join(", ", settings.Folders.Select(f => Path.GetFileName(f.TrimEnd('\\')))), null),
@@ -266,6 +269,8 @@ public sealed partial class SettingsWindow : Window
         box.SelectionChanged += (_, _) => { if (box.SelectedIndex >= 0) { set(box.SelectedIndex); Changed(); } };
         return box;
     }
+
+    private static readonly string[] Pets = ["bean", "cat", "frog", "ghost", "dog", "panda", "bunny", "robot"];
 
     // A drop-down of an enum's values.
     private ComboBox Choose<T>(T value, Action<T> set) where T : struct, Enum

@@ -68,6 +68,9 @@ public sealed class DockSettings
     public List<string> Folders { get; set; } = [];
     // A tile for what's playing, its cover as the icon: a click plays or pauses.
     public bool NowPlaying { get; set; } = true;
+    // A pixel friend on top of the dock, as in Beanotch's notch: bean, cat, frog, ghost, dog, panda, bunny or robot.
+    public bool Pet { get; set; }
+    public string PetKind { get; set; } = "bean";
     public bool Separator { get; set; } = true;
 
     // New versions download and install themselves, with the dock back a few seconds later.

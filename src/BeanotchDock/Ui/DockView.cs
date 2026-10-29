@@ -3,6 +3,8 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.Foundation;
 using Windows.UI;
@@ -24,6 +26,20 @@ public sealed class DockView
     private List<DockItem> items = [];
     private double width, height;
     private bool dark = true;
+
+    // The pet: a pixel friend sitting on top of the bar (bottom edge only), now and then walking along it, and hopping
+    // when tapped or when an app opens. Its walk and hop are compositor animations, so they cost the dock no frames.
+    private readonly Image pet = new() { Stretch = Stretch.Uniform, IsHitTestVisible = false, Visibility = Visibility.Collapsed };
+    private readonly TranslateTransform petMove = new();
+    private readonly ScaleTransform petFlip = new();
+    private const double PetWidth = 38, PetHeight = 30;
+    private double petAt = 0.85, petFrom, petTo, barStart, barLength, petTop;
+    private bool petWalking;
+    private string petKind = "";
+    public bool PetOn { get; set; }
+    public Rect PetRect { get; private set; }
+    // Asks the window for a frame, so the click-through shape follows the pet.
+    public Action? WantFrame { get; set; }
 
     public FrameworkElement View => canvas;
     public double IconSize { get; set; } = 52;
@@ -62,6 +78,9 @@ public sealed class DockView
         bar.BorderThickness = new Thickness(1);
         bar.IsHitTestVisible = false;
         canvas.Children.Add(bar);
+        pet.RenderTransformOrigin = new Point(0.5, 1);
+        pet.RenderTransform = new TransformGroup { Children = { petFlip, petMove } };
+        canvas.Children.Add(pet);
         canvas.Children.Add(label);
         canvas.Background = new SolidColorBrush(Colors.Transparent);
         Restyle(true);
@@ -192,6 +211,8 @@ public sealed class DockView
         Put(bar, barRect);
 
         var shapes = new List<Rect> { barRect };
+        (barStart, barLength) = (start, total);
+        PlacePet(barC, shapes);
         m = start + Pad;
         Hovered = null;
         foreach (var item in items)
@@ -265,6 +286,74 @@ public sealed class DockView
             label.Visibility = Visibility.Collapsed;
         }
         return shapes;
+    }
+
+    public void SetPetKind(string kind)
+    {
+        if (kind == petKind) return;
+        petKind = kind;
+        var file = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "Pets", $"kind-{kind}.png");
+        pet.Source = File.Exists(file) ? new BitmapImage(new Uri(file)) : null;
+    }
+
+    // On the bar's top edge at its share along it, or from where its walk began; the shape takes it in, with room to hop.
+    private void PlacePet(double barC, List<Rect> shapes)
+    {
+        var show = PetOn && Edge == DockEdge.Bottom && Tucked < 0.05 && pet.Source is not null;
+        pet.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        if (!show) { PetRect = default; return; }
+        petTop = height - barC - BarThickness - PetHeight + 4;
+        var left = petWalking ? petFrom : PetLeft(petAt);
+        Canvas.SetLeft(pet, left);
+        Canvas.SetTop(pet, petTop);
+        pet.Width = PetWidth;
+        pet.Height = PetHeight;
+        PetRect = new Rect(left, petTop, PetWidth, PetHeight);
+        shapes.Add(petWalking ? new Rect(Math.Min(petFrom, petTo), petTop - 14, Math.Abs(petTo - petFrom) + PetWidth, PetHeight + 10)
+                              : new Rect(left, petTop - 14, PetWidth, PetHeight + 10));
+    }
+
+    private double PetLeft(double share) => barStart + 8 + share * Math.Max(0, barLength - 16 - PetWidth);
+
+    public bool OnPet(Point p) => PetOn && pet.Visibility == Visibility.Visible && PetRect.Contains(p);
+
+    // A stroll to somewhere else along the bar, at a slow walk.
+    public void Walk()
+    {
+        if (!PetOn || petWalking || pet.Visibility != Visibility.Visible) return;
+        var share = Random.Shared.NextDouble();
+        (petFrom, petTo) = (PetLeft(petAt), PetLeft(share));
+        if (Math.Abs(petTo - petFrom) < 30) return;
+        petWalking = true;
+        petFlip.ScaleX = petTo < petFrom ? -1 : 1;
+        WantFrame?.Invoke();
+        var walk = new DoubleAnimation { From = 0, To = petTo - petFrom, Duration = TimeSpan.FromSeconds(Math.Abs(petTo - petFrom) / 45) };
+        Storyboard.SetTarget(walk, petMove);
+        Storyboard.SetTargetProperty(walk, "X");
+        var story = new Storyboard { Children = { walk } };
+        story.Completed += (_, _) =>
+        {
+            petAt = share;
+            petWalking = false;
+            story.Stop();
+            petMove.X = 0;
+            WantFrame?.Invoke();
+        };
+        story.Begin();
+    }
+
+    // A little hop: up and back down.
+    public void Hop()
+    {
+        if (!PetOn) return;
+        var hop = new DoubleAnimation
+        {
+            From = 0, To = -12, Duration = TimeSpan.FromMilliseconds(170), AutoReverse = true,
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+        };
+        Storyboard.SetTarget(hop, petMove);
+        Storyboard.SetTargetProperty(hop, "Y");
+        new Storyboard { Children = { hop } }.Begin();
     }
 
     // Whether anything is still moving, so the window can stop drawing frames when the dock is at rest.

@@ -51,6 +51,13 @@ public sealed partial class DockWindow
                 items.Select(i => $"{i.Kind} | {i.Label} | {i.Key} | running={i.Running} | icon={i.Icon is not null}")));
             await Pose("rest");
             await Render(dir, "dock-rest");
+            // The pet on the bar.
+            settings.Pet = true;
+            Apply();
+            await Task.Delay(1200);
+            await Render(dir, "dock-pet");
+            settings.Pet = false;
+            Apply();
             // Mac tiles, with the dock's own icon chosen for the last app, magnified and at rest.
             if (items.LastOrDefault(i => i.IsApp && !i.Recent) is { } last)
                 settings.CustomIcons[IconKey(last)] = Path.Combine(AppContext.BaseDirectory, "Assets", "BeanotchDock.ico");
