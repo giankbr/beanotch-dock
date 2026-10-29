@@ -549,7 +549,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
 </head>
 <body>
 
-<div class="banner"><a href="#download">✦ New in 0.5: drag to reorder, Downloads as a stack, recent apps, and apps that bounce for attention. <i data-lucide="arrow-right"></i></a></div>
+<div class="banner"><a href="#download">✦ New in 0.6: Mac-style icon tiles, and any picture as an app's icon. <i data-lucide="arrow-right"></i></a></div>
 
 <nav>
   <div class="bar">
@@ -610,6 +610,8 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
     <div class="grid-2 panels">
       <article class="card panel-card"><div class="feature-shot"><img class=" only-light" src="assets/dock-magnified-light.png" alt="The dock with an icon magnified"><img class=" only-dark" src="assets/dock-magnified-dark.png" alt=""></div><div class="txt"><h3>Magnification</h3><p>Icons grow smoothly as the pointer nears and settle back as it leaves. A label shows the app's name above it.</p></div></article>
       <article class="card panel-card"><div class="feature-shot"><img class=" only-light" src="assets/dock-rest-light.png" alt="The dock at rest"><img class=" only-dark" src="assets/dock-rest-dark.png" alt=""></div><div class="txt"><h3>At rest</h3><p>A glass bar, light or dark with Windows. A dot marks every app that's open, pinned or not.</p></div></article>
+      <article class="card panel-card"><div class="feature-shot"><img class=" only-light" src="assets/dock-tiles-magnified-light.png" alt="The dock with every app on a rounded tile, one magnified"><img class=" only-dark" src="assets/dock-tiles-magnified-dark.png" alt=""></div><div class="txt"><h3>Mac tiles</h3><p>Every app on a rounded square, tinted from its own colours, with a soft shadow. One switch in Dock Settings.</p></div></article>
+      <article class="card panel-card"><div class="feature-shot"><img class=" only-light" src="assets/dock-tiles-light.png" alt="The dock in tiles, with a custom picture as the last app's icon"><img class=" only-dark" src="assets/dock-tiles-dark.png" alt=""></div><div class="txt"><h3>Your own icons</h3><p>Right-click an app › Options › Change Icon… and pick any PNG, ICO or JPEG. Use Original Icon puts it back.</p></div></article>
     </div>
   </div>
 </section>
@@ -623,6 +625,8 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
     </div>
     <div class="grid-3" style="margin-top:64px">
       <article class="feature"><div><h3><span><i data-lucide="pin"></i></span>Your pins, imported</h3><p>The apps on your taskbar become the dock's on first launch. Keep any open app from its menu › Options.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="square"></i></span>Mac tiles</h3><p>Turn on Icon style › Mac tiles and every app sits on a rounded square, like the Mac's.</p></div></article>
+      <article class="feature"><div><h3><span><i data-lucide="image"></i></span>Any icon you like</h3><p>Give an app your own picture from its menu › Options › Change Icon…; icon packs welcome.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="move"></i></span>Drag to reorder</h3><p>Drag icons along the dock to put them in order, or pull one off the dock and let go to take it out.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="layers"></i></span>Stacks</h3><p>Downloads opens as a stack of its newest files above the dock, or as the folder if you'd rather.</p></div></article>
       <article class="feature"><div><h3><span><i data-lucide="history"></i></span>Recent apps</h3><p>The last few apps you closed sit after a divider, a click away, as on the Mac.</p></div></article>
@@ -691,7 +695,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
     </div>
     <article class="card get" style="margin-top:56px">
       <div class="title"><b><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg>Windows</b><span class="beta">Beta</span></div>
-      <p class="meta-line"><span class="ver">v0.5.0</span> · Windows 10 and 11 · x64 &amp; Snapdragon (ARM) · <span data-size="win">20 MB</span>, .NET included</p>
+      <p class="meta-line"><span class="ver">v0.6.0</span> · Windows 10 and 11 · x64 &amp; Snapdragon (ARM) · <span data-size="win">20 MB</span>, .NET included</p>
       <div class="cta-row" style="justify-content:flex-start">
         <a class="btn btn-primary win-dl" id="winDownload" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-x64.exe"><svg class="lucide winlogo" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.1 10.4 4v7.2H3zm8.4-1.2L21 2.5v8.7h-9.6zM3 12.6h7.4v7.3L3 18.8zm8.4 0H21v8.9l-9.6-1.4z"/></svg><span>Download for Windows</span></a>
         <a class="btn btn-ghost" id="winOther" href="https://github.com/giankbr/beanotch-dock/releases/latest/download/BeanotchDock-Setup-arm64.exe"><i data-lucide="cpu"></i><span>ARM</span></a>
@@ -730,7 +734,7 @@ svg.winlogo { width: 1.1em; height: 1.1em; }
       <div><h5>PRODUCT</h5><a href="#features">Features</a><a href="#details">Details</a><a href="#settings">Settings</a><a href="https://github.com/giankbr/beanotch-dock/releases">Releases</a></div>
       <div><h5>PROJECT</h5><a href="https://github.com/giankbr/beanotch-dock">GitHub</a><a href="https://github.com/giankbr/beanotch-dock/releases">Changelog</a><a href="https://github.com/giankbr/beanotch-dock/issues">Report an issue</a><a href="https://giankbr.github.io/beanie-notch">Beanotch</a></div>
       <div><h5>PRIVACY</h5><span>No tracking</span><span>No account</span><span>Nothing leaves your PC</span></div>
-      <div><h5>REQUIREMENTS</h5><span>Windows 10 or 11</span><span>x64 or ARM</span><span data-size="win">20 MB</span><span id="version">v0.5.0</span></div>
+      <div><h5>REQUIREMENTS</h5><span>Windows 10 or 11</span><span>x64 or ARM</span><span data-size="win">20 MB</span><span id="version">v0.6.0</span></div>
     </div>
     <div class="credits">
       <div><span class="eyebrow">Credits</span><h4>Standing on open source.</h4><p>How the Windows shell works, learned from these projects. Beanotch Dock's code is written from scratch.</p></div>

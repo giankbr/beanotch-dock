@@ -28,6 +28,8 @@
 - **Your apps:** starts with the apps pinned to your taskbar; open apps show too, with a dot under each.
 - **Click like a Mac:** an open app comes to the front, restored if minimized; one that isn't open starts with a bounce.
 - **Start, Downloads and the Recycle Bin:** Start at the head; Downloads and the bin at the end. Drop files on the bin to throw them away, or on an app to open them there.
+- **Mac tiles:** every app on a rounded square tinted from its own colours, or as Windows draws it.
+- **Your own icons:** right-click an app › Options › **Change Icon…** for any PNG, ICO or JPEG.
 - **Any edge:** bottom, left or right, with auto-hide. Icons shrink to fit when you keep more than the screen has room for.
 - **Out of the way:** hides itself while a game, a video or a slideshow fills the screen.
 - **The taskbar steps aside:** Windows' taskbar hides itself while the dock runs, and comes back exactly as it was when you quit or uninstall.
@@ -39,7 +41,7 @@ Right-click the dock › **Dock Settings…** (or open Beanotch Dock again from 
 
 | | |
 |---|---|
-| **Appearance** | Icon size · magnification and how much · position (bottom, left, right) · light, dark or follow Windows · how see-through the glass is · corners · spacing · distance from the edge · names on hover · a dot, a line or nothing under open apps |
+| **Appearance** | Icon size · Mac tiles or original icons · magnification and how much · position (bottom, left, right) · light, dark or follow Windows · how see-through the glass is · corners · spacing · distance from the edge · names on hover · a dot, a line or nothing under open apps |
 | **Behaviour** | Auto-hide and how long it waits · bounce when an app opens · open apps you haven't kept · click the app in front to minimize it · hide in full screen |
 | **Items** | Start button · Downloads · Recycle Bin · the divider · the order of your kept apps |
 | **System** | Hide the Windows taskbar · open at sign-in · update automatically · reset to defaults |
@@ -75,7 +77,7 @@ C# and WinUI 3 on .NET 8, unpackaged, the UI written in code (no XAML).
 
 ```powershell
 dotnet publish src/BeanotchDock/BeanotchDock.csproj -c Release -r win-x64 -p:Platform=x64 -o out/BeanotchDock
-iscc /DAppVersion=0.4.0 /DArch=x64 installer\BeanotchDock.iss
+iscc /DAppVersion=0.6.0 /DArch=x64 installer\BeanotchDock.iss
 ```
 
 CI ([build.yml](.github/workflows/build.yml)) builds x64 and ARM64 on every push, photographs the dock on a Windows runner (light and dark, at rest, magnified, its menu and settings), and attaches both installers to each release.
