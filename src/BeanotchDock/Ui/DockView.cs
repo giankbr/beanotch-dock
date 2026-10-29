@@ -302,7 +302,8 @@ public sealed class DockView
         var show = PetOn && Edge == DockEdge.Bottom && Tucked < 0.05 && pet.Source is not null;
         pet.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         if (!show) { PetRect = default; return; }
-        petTop = height - barC - BarThickness - PetHeight + 4;
+        // The sprite leaves room under the body (for what it wears), so it sits a little into the bar to rest on it.
+        petTop = height - barC - BarThickness - PetHeight + 11;
         var left = petWalking ? petFrom : PetLeft(petAt);
         Canvas.SetLeft(pet, left);
         Canvas.SetTop(pet, petTop);
