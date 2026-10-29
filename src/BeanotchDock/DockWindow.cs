@@ -133,6 +133,11 @@ public sealed partial class DockWindow : Window
         view.Indicator = settings.Indicator;
         view.Bounce = settings.Bounce;
         view.Restyle(Dark);
+        if (iconStyle != settings.IconStyle)
+        {
+            iconStyle = settings.IconStyle;
+            ReloadIcons();
+        }
         screen = DisplayArea.Primary.OuterBounds;
         scale = Native.GetDpiForWindow(hwnd) / 96.0;
         var depth = (int)Math.Ceiling(view.Thickness * scale);
@@ -288,10 +293,20 @@ public sealed partial class DockWindow : Window
     }
 
     private bool trashFull;
+    private DockIconStyle? iconStyle;
+
+    // Every icon drawn again on the next refresh, after the style changes.
+    private void ReloadIcons()
+    {
+        foreach (var item in items.Append(start).Append(downloads).Append(trash)) item.Icon = null;
+    }
+
+    // What a picture you chose is kept under: a recent app shares its kept self's.
+    private static string IconKey(DockItem item) => item.Recent && item.Pin is { } pin ? Shell.KeyFor(pin) : item.Key;
 
     private async Task LoadIconAsync(DockItem item)
     {
-        var icon = await Icons.ForAsync(item);
+        var icon = await Icons.ForAsync(item, settings.CustomIcons.GetValueOrDefault(IconKey(item)), settings.IconStyle == DockIconStyle.Tiles);
         if (icon is null) return;
         item.Icon = icon;
         view.RefreshIcon(item);
@@ -421,6 +436,9 @@ public sealed partial class DockWindow : Window
             Option("Keep in Dock", () => { if (kept) Unpin(item); else Pin(item); }, kept);
             if ((item.Pin ?? Shell.PinFor(item)) is { } launch) Option("Open at Login", () => Startup.SetFor(launch, !Startup.IsOn(launch)), Startup.IsOn(launch));
             if (item.Pin is not null || item.Source is not null) Option("Show in File Explorer", () => Shell.Reveal(item));
+            options.Items.Add(new MenuFlyoutSeparator());
+            Option("Change Icon…", () => _ = ChangeIconAsync(item));
+            if (settings.CustomIcons.ContainsKey(IconKey(item))) Option("Use Original Icon", () => SetIcon(item, null));
             menu.Items.Add(options);
             menu.Items.Add(new MenuFlyoutSeparator());
             if (!item.Running && item.Pin is { } p) Add("Open", () => { if (Shell.Launch(p)) { item.LaunchedAt = DateTimeOffset.Now; Animate(); } });
@@ -490,6 +508,42 @@ public sealed partial class DockWindow : Window
     }
 
     public void SettingsChanged() => Save();
+
+    // Any picture as an app's icon (a PNG, an ICO, a JPEG), copied beside the settings so it stays if the file moves.
+    private async Task ChangeIconAsync(DockItem item)
+    {
+        var picker = new Windows.Storage.Pickers.FileOpenPicker
+        {
+            SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary,
+            ViewMode = Windows.Storage.Pickers.PickerViewMode.Thumbnail,
+        };
+        foreach (var type in new[] { ".png", ".ico", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff" }) picker.FileTypeFilter.Add(type);
+        WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        if (await picker.PickSingleFileAsync() is not { } file) return;
+        try
+        {
+            var folder = Path.Combine(DockSettings.Folder, "Icons");
+            Directory.CreateDirectory(folder);
+            // A new name each time, so the icon cache never hands back the old picture.
+            var name = Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(IconKey(item))))[..10];
+            var copy = Path.Combine(folder, $"{name}-{DateTime.Now.Ticks}{Path.GetExtension(file.Path).ToLowerInvariant()}");
+            File.Copy(file.Path, copy, true);
+            SetIcon(item, copy);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { App.Log(e); }
+    }
+
+    // A chosen picture for the app, or none to go back to its own icon.
+    private void SetIcon(DockItem item, string? path)
+    {
+        var key = IconKey(item);
+        if (settings.CustomIcons.Remove(key, out var old))
+            try { File.Delete(old); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { App.Log(e); }
+        if (path is not null) settings.CustomIcons[key] = path;
+        settings.Save();
+        foreach (var same in items.Where(i => IconKey(i) == key)) same.Icon = null;
+        Refresh();
+    }
 
     public void TaskbarChanged()
     {

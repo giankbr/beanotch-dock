@@ -49,6 +49,23 @@ public sealed partial class DockWindow
                 items.Select(i => $"{i.Kind} | {i.Label} | {i.Key} | running={i.Running} | icon={i.Icon is not null}")));
             await Pose("rest");
             await Render(dir, "dock-rest");
+            // Mac tiles, with the dock's own icon chosen for the last app, magnified and at rest.
+            if (items.LastOrDefault(i => i.IsApp && !i.Recent) is { } last)
+                settings.CustomIcons[IconKey(last)] = Path.Combine(AppContext.BaseDirectory, "Assets", "BeanotchDock.ico");
+            settings.IconStyle = DockIconStyle.Tiles;
+            Apply();
+            await Task.Delay(1500);
+            await Render(dir, "dock-tiles");
+            var tiled = items.Where(i => i.IsApp).ToList();
+            view.Pointer = tiled.Count > 3 ? tiled[3].X + 20 : null;
+            Animate();
+            await Task.Delay(800);
+            await Render(dir, "dock-tiles-magnified");
+            view.Pointer = null;
+            settings.CustomIcons.Clear();
+            settings.IconStyle = DockIconStyle.Original;
+            Apply();
+            await Task.Delay(1500);
             // The pointer over the fourth icon, as if reaching for it.
             var apps = items.Where(i => i.IsApp).ToList();
             var target = apps.Count > 3 ? apps[3] : apps.LastOrDefault();

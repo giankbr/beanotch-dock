@@ -14,6 +14,7 @@ public sealed class Pin
 public enum DockEdge { Bottom, Left, Right }
 public enum DockTheme { Auto, Light, Dark }
 public enum DockIndicator { Dot, Line, None }
+public enum DockIconStyle { Original, Tiles }
 
 // Saved as JSON in %LOCALAPPDATA%\BeanotchDock\settings.json. Every field has a sensible default, so a file from an
 // older version (or none) still loads.
@@ -34,6 +35,10 @@ public sealed class DockSettings
     public double Margin { get; set; } = 8;
     public bool Labels { get; set; } = true;
     public DockIndicator Indicator { get; set; } = DockIndicator.Dot;
+    // Icons as Windows draws them, or every app on a rounded square, as on the Mac.
+    public DockIconStyle IconStyle { get; set; } = DockIconStyle.Original;
+    // Pictures you chose for apps, by the app's key: copies kept in the Icons folder beside this file.
+    public Dictionary<string, string> CustomIcons { get; set; } = [];
 
     // Behaviour
     public bool AutoHide { get; set; }
@@ -67,12 +72,12 @@ public sealed class DockSettings
     // Whether the taskbar was already set to hide itself before the dock changed it, so quitting leaves it as found.
     public bool? TaskbarWasAutoHide { get; set; }
 
-    // Back to how a fresh install looks, keeping the pins and what the taskbar was.
+    // Back to how a fresh install looks, keeping the pins, the icons you chose and what the taskbar was.
     public void Reset()
     {
         var d = new DockSettings();
-        (IconSize, Magnify, Magnification, Edge, Theme, Opacity, Roundness, Spacing, Margin, Labels, Indicator) =
-            (d.IconSize, d.Magnify, d.Magnification, d.Edge, d.Theme, d.Opacity, d.Roundness, d.Spacing, d.Margin, d.Labels, d.Indicator);
+        (IconSize, Magnify, Magnification, Edge, Theme, Opacity, Roundness, Spacing, Margin, Labels, Indicator, IconStyle) =
+            (d.IconSize, d.Magnify, d.Magnification, d.Edge, d.Theme, d.Opacity, d.Roundness, d.Spacing, d.Margin, d.Labels, d.Indicator, d.IconStyle);
         (AutoHide, HideDelay, Bounce, ShowRunning, ClickMinimizes, HideInFullscreen) =
             (d.AutoHide, d.HideDelay, d.Bounce, d.ShowRunning, d.ClickMinimizes, d.HideInFullscreen);
         (StartButton, Downloads, Trash, Separator, DownloadsStack, ShowRecent) =

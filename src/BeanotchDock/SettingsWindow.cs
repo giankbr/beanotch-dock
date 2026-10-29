@@ -66,6 +66,8 @@ public sealed partial class SettingsWindow : Window
                 Slide(0, 48, 1, settings.Margin, v => settings.Margin = v, v => $"{v:0} px")),
             Row("Show names", "A label beside the icon you point at",
                 Toggle(settings.Labels, v => settings.Labels = v)),
+            Row("Icon style", "Mac tiles set every app on a rounded square; right-click an app to give it your own picture",
+                ChooseText(["Original", "Mac tiles"], settings.IconStyle == DockIconStyle.Tiles ? 1 : 0, i => settings.IconStyle = i == 1 ? DockIconStyle.Tiles : DockIconStyle.Original)),
             Row("Open apps", "The mark under apps that are open",
                 Choose(settings.Indicator, v => settings.Indicator = v)));
 
